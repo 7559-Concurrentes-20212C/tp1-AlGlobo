@@ -1,3 +1,4 @@
+use std::env;
 use std::fs::File;
 use std::io::BufRead;
 use std::io::BufReader;
@@ -13,7 +14,11 @@ use std::thread;
 */
 
 fn main() {
-    let file = File::open("reservas.txt").expect("could not open file");
+    let args: Vec<String> = env::args().collect();
+
+    let filename = &args[1];
+
+    let file = File::open(filename).expect("could not open file");
     let reader = BufReader::new(file);
     let mut threads = vec![];
 
