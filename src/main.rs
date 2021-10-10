@@ -75,7 +75,7 @@ fn main() {
 
     const RATE_LIMIT: u32 = 1;
 
-    let filename = &args[1];
+    let filename = &args[0];
     let file = File::open(filename).expect("could not open file");
     let reader = BufReader::new(file);
 
