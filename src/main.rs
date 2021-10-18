@@ -56,9 +56,19 @@ impl Webservice {
     pub fn run_webservice(&self) {
         let recver = self.recv.lock().unwrap();
         loop {
-            let flight = recver.recv().unwrap();
-            thread::spawn(move || process_flight(flight));
+            let flight = recver.recv();
+            if flight.is_ok() {
+                thread::spawn(move || process_flight(flight.unwrap()));
+            } else {
+                println!("error!");
+                break;
+            }
         }
+    }
+
+    pub fn close_webservice(&self){
+        println!("closing webservice");
+        //drop(self.send);
     }
 }
 
@@ -76,7 +86,7 @@ fn main() {
     const RATE_LIMIT: u32 = 1;
 
     let filename = &args[0];
-    let file = File::open(filename).expect("could not open file");
+    let file = File::open("test.txt").expect("could not open file");
     let reader = BufReader::new(file);
 
     let mut threads = vec![];
@@ -85,34 +95,37 @@ fn main() {
     let ws_copy = flight_ws.clone();
     threads.push(thread::spawn(move || ws_copy.run_webservice()));
 
-    //for line in reader.lines().flatten() {
-    let (result_send, result_recv) = mpsc::channel();
-    let wbs_message_sender = flight_ws.send.clone();
+    for line in reader.lines().flatten() {
+        let (result_send, result_recv) = mpsc::channel();
+        let wbs_message_sender = flight_ws.send.clone();
 
-    let reservation = Flight {
-        origin: "APQ".to_owned(),
-        destination: "BRC".to_owned(),
-        airline: "aerolineas argentinas".to_owned(),
-        result_gateway: result_send,
-    };
-    threads.push(thread::spawn(move || {
-        // acquire lock
-        let sender = wbs_message_sender.lock().unwrap();
-        sender.send(reservation);
-        drop(sender);
-        //release lock
+        let reservation = Flight {
+            origin: line,
+            destination: "BRC".to_owned(),
+            airline: "aerolineas argentinas".to_owned(),
+            result_gateway: result_send,
+        };
+        threads.push(thread::spawn(move || {
+            // acquire lock
+            let sender = wbs_message_sender.lock().unwrap();
+            sender.send(reservation);
+            drop(sender);
+            //release lock
 
-        let result = result_recv.recv().unwrap();
-        println!(
-            "Flight {} has been proccessed with result {}",
-            result.id, result.accepted
-        );
-    }));
-    //}
+            let result = result_recv.recv().unwrap();
+            println!(
+                "Flight {} has been proccessed with result {}",
+                result.id, result.accepted
+            );
+            drop(wbs_message_sender);
+        }));
+    }
 
+    flight_ws.close_webservice();
     for thread in threads {
         thread
             .join()
             .expect("Couldn't join on the associated thread");
     }
+    println!("finished!")
 }
