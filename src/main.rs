@@ -1,3 +1,9 @@
+mod webservice;
+mod flight;
+mod thread_pool;
+
+use webservice::Webservice;
+use flight::{Flight};
 use std::collections::VecDeque;
 use std::env;
 use std::fs::File;
@@ -8,6 +14,8 @@ use std::sync::{mpsc, Arc, Mutex};
 use std::{thread, time};
 use std_semaphore::Semaphore;
 
+// outdated
+
 /* (archivo con de configuracion con rate limit y numero de aerolineas)
 / 1. inicializar web services de aerolineas y hotel (struct)
 / 2. leer pedidos del archivo y spawnear 1 thread (thread cliente) por pedido
@@ -16,61 +24,6 @@ use std_semaphore::Semaphore;
         controlar rate limit
 / 5. el cliente recibe el valor de retorno del metodo procesar y finaliza
 */
-
-pub struct Flight {
-    pub origin: String,
-    pub destination: String,
-    pub airline: String,
-    pub result_gateway: Sender<FlightResult>,
-}
-
-pub struct FlightResult {
-    pub id: String,
-    pub accepted: bool,
-}
-
-pub struct Webservice {
-    recv: Arc<Mutex<Receiver<Flight>>>,
-    send: Arc<Mutex<Sender<Flight>>>,
-}
-
-fn process_flight(reservation: Flight) {
-    thread::sleep(time::Duration::from_millis(100));
-    println!(
-        "Processing flight {} to {} from {}",
-        reservation.airline, reservation.destination, reservation.origin
-    );
-    let id_str = format!(
-        "{}{}{}",
-        reservation.airline.to_owned(),
-        reservation.destination,
-        reservation.origin
-    );
-    reservation.result_gateway.send(FlightResult {
-        id: id_str,
-        accepted: true,
-    });
-}
-
-impl Webservice {
-    pub fn run_webservice(&self) {
-        let recver = self.recv.lock().unwrap();
-        loop {
-            let flight = recver.recv();
-            if flight.is_ok() {
-                thread::spawn(move || process_flight(flight.unwrap()));
-            } else {
-                println!("error!");
-                break;
-            }
-        }
-    }
-
-    pub fn close_webservice(&self){
-        println!("closing webservice");
-        //drop(self.send);
-    }
-}
 
 fn create_webservice(rate_limit: u32) -> Webservice {
     let (wbs_send, wbs_recv) = mpsc::channel();
