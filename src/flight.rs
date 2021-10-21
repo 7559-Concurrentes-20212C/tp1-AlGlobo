@@ -1,10 +1,14 @@
-use std::sync::mpsc::{Receiver, Sender};
+use crate::thread_pool;
+use thread_pool::{Message}; 
+
+use std::sync::mpsc::{Sender};
+
 
 pub struct Flight {
     pub origin: String,
     pub destination: String,
     pub airline: String,
-    pub result_gateway: Sender<FlightResult>,
+    pub result_gateway: Sender<Message>,
 }
 
 pub struct FlightResult {

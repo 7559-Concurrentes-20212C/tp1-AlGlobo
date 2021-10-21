@@ -10,7 +10,7 @@ pub struct ThreadPool {
 
 type Job = Box<dyn FnOnce() + Send + 'static>;
 
-enum Message {
+pub enum Message {
     NewJob(Job),
     Terminate,
 }
@@ -66,11 +66,11 @@ struct Worker {
 }
 
 impl Worker {
-    fn new(id: usize, receiver: Arc<Mutex<mpsc::Receiver<Job>>>) -> Worker {
+    fn new(id: usize, receiver: Arc<Mutex<mpsc::Receiver<Message>>>) -> Worker {
         let thread = thread::spawn(move || loop {
             
             //lock guard gets dropped after use because of the let, it only stores the job
-            let message = receiver.lock().expect("worker lock got poisoned").recv().unwrap();
+            let message = receiver.lock().unwrap().recv().unwrap();
 
             match message {
                 Message::NewJob(job) => {
