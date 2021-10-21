@@ -1,10 +1,11 @@
 use crate::thread_pool;
 use crate::flight;
+extern crate rand;
 
 use std::thread;
 use std::time;
-use thread_pool::{Message, ThreadPool};
-use flight::{FlightResult, Flight};
+use thread_pool::{ThreadPool};
+use flight::{Flight};
 
 pub struct Webservice {
     pub thread_pool : ThreadPool,
@@ -19,14 +20,14 @@ impl Webservice {
     }
 
     pub fn process(&self, reservation: Flight){
-        self.thread_pool.execute(|| {
+        self.thread_pool.execute(move || {
             _process(reservation);
         })
     }
 }
 
 fn _process(reservation: Flight) {
-    thread::sleep(time::Duration::from_millis(100));
+
     println!(
         "Processing flight {} to {} from {}",
         reservation.airline, reservation.destination, reservation.origin
@@ -38,15 +39,11 @@ fn _process(reservation: Flight) {
         reservation.origin,
     );
 
-    let job = Box::new(|| {
-        build_result(id_str, true);
-    });
-    reservation.result_gateway.send(Message::NewJob(job));
+    let i: i32 = rand::random();
+    thread::sleep(time::Duration::from_millis(i as u64 % 1000));
+
+    //reservation.result_gateway.lock().expect("error result gateway").send(Message::NewJob(job));
+
+    reservation.result_service.process_result(id_str, true);
 }
 
-fn build_result(id_str : String, accepted : bool) -> FlightResult {
-    FlightResult {
-        id: id_str,
-        accepted: true,
-    }
-}
