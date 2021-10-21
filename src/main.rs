@@ -22,19 +22,20 @@ fn main() {
 
     //creates service for handling incoming results
     let results_services = Arc::new(ThreadPool::new(RATE_LIMIT));
+    let result_sender = Arc::new(Mutex::new(results_services.result_sender));
 
     //creates all web services
     let mut web_services = HashMap::new();
-    web_services.insert("aerolineas argentinas".to_owned(), Arc::new(Webservice::new(RATE_LIMIT)))
+    web_services.insert("aerolineas argentinas".to_owned(), Arc::new(Webservice::new(RATE_LIMIT)));
 
     for line in reader.lines().flatten() {
-
+        
         let reservation = build_reservation(line, Arc::clone(&result_send)));
         let ws = web_services.get(reservation.airline);
         ws.process(reservation);
     }
 
-    println!("finished!")
+    println!("finished!");
 }
 
 fn build_reservation(line: String, result_send: Sender<FlightResult>) -> Flight {
