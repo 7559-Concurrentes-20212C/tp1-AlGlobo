@@ -21,8 +21,8 @@ fn main() {
     let reader = BufReader::new(file);
 
     //creates service for handling incoming results
-    let results_services = Arc::new(ThreadPool::new(RATE_LIMIT));
-    let result_sender = Arc::new(Mutex::new(results_services.result_sender));
+    let results_service = Arc::new(ResultService::new(RATE_LIMIT));
+    let result_sender = Arc::new(Mutex::new(results_service.result_sender));
 
     //creates all web services
     let mut web_services = HashMap::new();
