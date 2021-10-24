@@ -6,6 +6,9 @@ use std::thread;
 use std::time;
 use thread_pool::{ThreadPool};
 use reservation::{Reservation};
+use std::sync::Arc;
+use std::time::{Duration, Instant};
+use crate::reservation::ReservationResult;
 
 enum Decision {
     Accepted,
@@ -14,38 +17,42 @@ enum Decision {
 
 pub struct Webservice {
     pub thread_pool : ThreadPool,
+    success_rate: usize
 }
 
 impl Webservice {
 
-    pub fn new(rate_limit: usize) -> Webservice {
+    pub fn new(rate_limit: usize, success_chance: usize) -> Webservice {
         Webservice {
             thread_pool : ThreadPool::new(rate_limit),
+            success_rate: success_chance % 100
         }
     }
 
     fn decide(&self) -> Decision{
-        Decision::Accepted // TODO (usar el count del Arc del recvr del channel de la thread pool para saber si tomar o no)
+        let i: i32 = rand::random();
+        if i % 100 <= self.success_rate as i32 {
+            return Decision::Accepted;
+        }
+        return Decision::Rejected;
     }
 
-    pub fn process(&self, reservation: Reservation){
+    pub fn process(&self, reservation: Arc<Reservation>){
+        let start = Instant::now();
+        let decision = self.decide();
+        self.thread_pool.execute(move || {
+            let id = _process(reservation.clone());
 
-        const WAIT_TIME : u64 = 100;
-        const ATTEMPTS : u64 = 10; 
-
-        for _ in 0..ATTEMPTS { //ensures termination
-            match self.decide() {
-                Decision::Accepted => {
-                    self.thread_pool.execute(move || {_process(reservation);});
-                    break;
-                },
-                Decision::Rejected => wait(WAIT_TIME),
-            }
-        }
+            random_wait();
+            let result = ReservationResult::new(id,
+                                                matches!(decision , Decision::Accepted),
+                                                start.elapsed());
+            reservation.result_service.process_result(result);
+        })
     }
 }
 
-fn _process(reservation: Reservation) {
+fn _process(reservation: Arc<Reservation>) -> String {
 
     println!(
         "Processing flight {} to {} from {}",
@@ -58,8 +65,7 @@ fn _process(reservation: Reservation) {
         reservation.origin,
     );
 
-    random_wait();
-    reservation.result_service.process_result(id_str, true);
+    return id_str;
 }
 
 fn wait(miliseconds: u64){
