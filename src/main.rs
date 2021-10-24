@@ -2,6 +2,7 @@ mod flight;
 mod thread_pool;
 mod resultservice;
 mod webservice;
+mod unit_tests;
 
 use webservice::Webservice;
 use resultservice::ResultService;

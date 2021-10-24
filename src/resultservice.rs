@@ -20,9 +20,9 @@ impl ResultService {
 
     pub fn process_result(&self, id_str : String, accepted : bool) {
 
-        print!("procesando el id: {}", id_str);
-
         self.thread_pool.lock().unwrap().execute(|| {
+            print!("procesando el id: {}", id_str);
+
             build_result(id_str, true);
         });
 
