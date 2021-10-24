@@ -7,7 +7,7 @@ use thread_pool::{ThreadPool};
 use crate::stats_service::{StatsService, MovingStats};
 
 pub struct ResultService {
-    pub thread_pool : Mutex<ThreadPool>,
+    thread_pool : Mutex<ThreadPool>,
     stats: Arc<StatsService>,
 }
 
@@ -23,7 +23,7 @@ impl ResultService {
     pub fn process_result(&self, reservation: ReservationResult) {
         let stats = self.stats.clone();
         self.thread_pool.lock().expect("could not acquire thread").execute(move || { // TODO estaria bueno que escriba en un archivo tmb
-            print!("processing result with id: {}", reservation.id);
+            print!("processing result with id: {}", reservation.airline);
             stats.process_result_stats( reservation );
         });
 

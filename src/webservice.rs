@@ -8,7 +8,7 @@ use thread_pool::{ThreadPool};
 use reservation::{Reservation};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
-use crate::reservation::ReservationResult;
+use crate::reservation::{ReservationResult, ReservationProcessRequest};
 
 enum Decision {
     Accepted,
@@ -16,15 +16,15 @@ enum Decision {
 }
 
 pub struct Webservice {
-    pub thread_pool : ThreadPool,
+    thread_pool: ThreadPool,
     success_rate: usize
 }
 
 impl Webservice {
 
-    pub fn new(rate_limit: usize, success_chance: usize) -> Webservice {
+    pub fn new(capacity: usize, success_chance: usize) -> Webservice {
         Webservice {
-            thread_pool : ThreadPool::new(rate_limit),
+            thread_pool: ThreadPool::new(capacity),
             success_rate: success_chance % 100
         }
     }
@@ -37,17 +37,17 @@ impl Webservice {
         return Decision::Rejected;
     }
 
-    pub fn process(&self, reservation: Arc<Reservation>){
+    pub fn process(&self, req: Arc<ReservationProcessRequest>){
         let start = Instant::now();
         let decision = self.decide();
         self.thread_pool.execute(move || {
-            let id = _process(reservation.clone());
+            let id = _process(req.reservation.clone());
 
             random_wait();
-            let result = ReservationResult::new(id,
+            let result = ReservationResult::from_reservation_ref(req.reservation,
                                                 matches!(decision , Decision::Accepted),
                                                 start.elapsed());
-            reservation.result_service.process_result(result);
+            req.resolve(result);
         })
     }
 }

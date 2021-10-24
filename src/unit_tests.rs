@@ -1,4 +1,4 @@
-use std::sync::{Arc, mpsc, Mutex};
+/*use std::sync::{Arc, mpsc, Mutex};
 
 #[cfg(test)]
 mod tests_thread_pool {
@@ -69,3 +69,14 @@ mod tests_webservice {
         assert_eq!(0, 2);
     }
 }
+
+#[cfg(test)]
+mod test_stats_service {
+    // Note this useful idiom: importing names from outer (for mod tests) scope.
+    use super::*;
+
+    #[test]
+    fn should_execute() {
+
+    }
+}*/

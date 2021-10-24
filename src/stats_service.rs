@@ -6,7 +6,7 @@ use crate::reservation::ReservationResult;
 use std::cmp::{max, min};
 
 pub struct StatsService {
-    pub thread_pool : Mutex<ThreadPool>,
+    thread_pool : ThreadPool,
     history: Arc<Mutex<VecDeque<ReservationResult>>>,
 }
 
@@ -22,7 +22,7 @@ pub struct MovingStats {
 impl StatsService {
 
     pub fn new(rate_limit: usize, moving_avg: usize) -> StatsService {
-        let thread_pool = Mutex::new(ThreadPool::new(rate_limit));
+        let thread_pool = ThreadPool::new(rate_limit);
         StatsService {
             thread_pool,
             history :  Arc::new(Mutex::new(VecDeque::with_capacity(moving_avg))),
@@ -32,7 +32,7 @@ impl StatsService {
     pub fn process_result_stats(&self, f :ReservationResult) {
         let history = self.history.clone();
 
-        self.thread_pool.lock().expect("could not get thread lock! stats_service").execute(move || {
+        self.thread_pool.execute(move || {
             let mut h = history.lock().expect("could not acquire history");
             if h.len() >= h.capacity(){
                 h.pop_back();

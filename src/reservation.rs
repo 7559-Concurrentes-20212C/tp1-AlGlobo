@@ -14,12 +14,11 @@ pub struct Reservation {
     pub destination: String,
     pub airline: String,
     pub kind: ReservationKind,
-    pub result_service: Arc<ResultService>,
 }
 
 impl Reservation {
   
-    pub fn from_line(line: String, result_service: Arc<ResultService>) -> Reservation {
+    pub fn from_line(line: String) -> Reservation {
 
         let params = line.split(',').collect::<Vec<&str>>();
     
@@ -31,24 +30,61 @@ impl Reservation {
                 "flight" => ReservationKind::Flight,
                 _ => ReservationKind::Package,
             },
-            result_service,
         }
     }
 
 }
 
+type ResultCallback = fn(ReservationResult);
+
+pub struct ReservationProcessRequest {
+    pub reservation: Arc<Reservation>,
+    callback: ResultCallback
+}
+
+impl ReservationProcessRequest{
+    pub fn new(reservation: Arc<Reservation>, callback: ResultCallback) -> ReservationProcessRequest {
+        return ReservationProcessRequest{reservation, callback};
+    }
+
+    pub fn resolve(&self, reservation_result: ReservationResult){
+        (self.callback)(reservation_result);
+    }
+}
+
 pub struct ReservationResult {
-    pub id: String,
+    pub origin: String,
+    pub destination: String,
+    pub airline: String,
+    pub kind: ReservationKind,
     pub accepted: bool,
     pub time_to_process: Duration,
 }
 
 impl ReservationResult {
-    pub fn new(id_str : String, accepted : bool, delay : Duration) -> ReservationResult {
+    pub fn from_reservation(reservation : Reservation, accepted : bool, delay : Duration) -> ReservationResult {
         ReservationResult {
-            id: id_str,
+            origin: reservation.origin,
+            destination: reservation.destination,
+            airline: reservation.airline,
             accepted,
-            time_to_process : delay
+            time_to_process : delay,
+            kind: reservation.kind
+        }
+    }
+
+    pub fn from_reservation_ref(reservation : Arc<Reservation>, accepted : bool, delay : Duration) -> ReservationResult {
+        ReservationResult {
+            origin: reservation.origin.clone(),
+            destination: reservation.destination.clone(),
+            airline: reservation.airline.clone(),
+            accepted,
+            time_to_process : delay,
+            kind: if matches!( reservation.kind, ReservationKind::Flight)
+                    {ReservationKind::Flight}
+                else
+                    {ReservationKind::Package}
         }
     }
 }
+
