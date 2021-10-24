@@ -2,6 +2,7 @@ mod reservation;
 mod thread_pool;
 mod resultservice;
 mod webservice;
+mod stats_service;
 
 use webservice::Webservice;
 use resultservice::ResultService;
