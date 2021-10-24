@@ -28,7 +28,7 @@ mod tests_thread_pool {
 }
 
 #[cfg(test)]
-mod tests_webservice {
+mod tests_result_service {
     // Note this useful idiom: importing names from outer (for mod tests) scope.
     use super::*;
     use crate::resultservice::ResultService;
@@ -65,7 +65,7 @@ mod tests_webservice {
 
         w.process(f);
 
-        // unfinished until resultservice does something interesting with
+        // unfinished until resultservice does something interesting with the results
         assert_eq!(0, 2);
     }
 }

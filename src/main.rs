@@ -2,7 +2,7 @@ mod flight;
 mod thread_pool;
 mod resultservice;
 mod webservice;
-mod unit_tests;
+mod stats_service;
 
 use webservice::Webservice;
 use resultservice::ResultService;
@@ -38,7 +38,9 @@ fn main() {
         ws.process(reservation);
     }
 
-    println!("finished!");
+    //ejemplo, igual el main no espera a los threads hijos asi que habria que ver eso
+    let result = results_service.get_stats_history();
+    println!("finished! success rate: {}, sample size: {}", result.success_rate, result.sample_size);
 }
 
 fn build_reservation(line: String, result_service: Arc<ResultService>) -> Flight {

@@ -4,9 +4,11 @@ use crate::flight;
 use std::sync::Mutex;
 use flight::{FlightResult};
 use thread_pool::{ThreadPool};
+use crate::stats_service::{StatsService, MovingStats};
 
 pub struct ResultService {
     pub thread_pool : Mutex<ThreadPool>,
+    stats: StatsService,
 }
 
 impl ResultService {
@@ -14,7 +16,8 @@ impl ResultService {
     pub fn new(rate_limit: usize) -> ResultService {
         let thread_pool = Mutex::new(ThreadPool::new(rate_limit));
         ResultService {
-            thread_pool : thread_pool,
+            thread_pool,
+            stats: StatsService::new(rate_limit, 1000)
         }
     }
 
@@ -26,6 +29,10 @@ impl ResultService {
             build_result(id_str, true);
         });
 
+    }
+
+    pub fn get_stats_history(&self) -> MovingStats {
+        return self.stats.calculate_stats();
     }
 }
 
