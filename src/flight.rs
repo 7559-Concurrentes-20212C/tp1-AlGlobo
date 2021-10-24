@@ -6,7 +6,8 @@ use std::sync::Arc;
 pub struct Flight {
     pub origin: String,
     pub destination: String,
-    pub airline: String,
+    pub airline: Arc<String>,
+    pub reservation_type: String,
     pub result_service: Arc<ResultService>,
 }
 
