@@ -16,6 +16,8 @@ use std::io::BufRead;
 use std::io::BufReader;
 use std::thread;
 
+use crate::reservation::ReservationKind;
+
 fn main() {
 
     let args: Vec<String> = env::args().collect();
@@ -33,10 +35,15 @@ fn main() {
     //creates all web services container
     let mut web_services : HashMap<Arc<String>, Webservice> = HashMap::new();
 
+    //creates hotel
+    let hotel = Arc::new(Hotel::new());
+
     for line in reader.lines().flatten() {
         let reservation = Reservation::new(line, Arc::clone(&results_service));
         let ws = web_services.entry(Arc::clone(&reservation.airline)).or_insert(Webservice::new(RATE_LIMIT));
+
         ws.process(reservation);
+        if matches!(reservation.kind, ReservationKind::Package){hotel.process(reservation);}
     }
 
     thread::sleep(time::Duration::from_millis(15000)); //TODO si no pongo esto el main sale de scope y ordena a terminar el resto de los threads
