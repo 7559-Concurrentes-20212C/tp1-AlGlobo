@@ -1,8 +1,8 @@
 use crate::thread_pool;
-use crate::flight;
+use crate::reservation;
 
 use std::sync::Mutex;
-use flight::{FlightResult};
+use reservation::{ReservationResult};
 use thread_pool::{ThreadPool};
 
 pub struct ResultService {
@@ -12,9 +12,8 @@ pub struct ResultService {
 impl ResultService {
 
     pub fn new(rate_limit: usize) -> ResultService {
-        let thread_pool = Mutex::new(ThreadPool::new(rate_limit));
         ResultService {
-            thread_pool : thread_pool,
+            thread_pool : Mutex::new(ThreadPool::new(rate_limit)),
         }
     }
 
@@ -22,21 +21,9 @@ impl ResultService {
 
         print!("procesando el id: {}", id_str);
 
-        self.thread_pool.lock().unwrap().execute(|| {
-            build_result(id_str, true);
+        self.thread_pool.lock().unwrap().execute(|| { // TODO validar unwrap
+            ReservationResult::new(id_str, true);
         });
 
     }
 }
-
-fn build_result(id_str : String, accepted : bool) -> FlightResult {
-    FlightResult {
-        id: id_str,
-        accepted: accepted,
-    }
-}
-
-
-
-
-
