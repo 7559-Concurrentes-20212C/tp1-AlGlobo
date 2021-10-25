@@ -1,4 +1,4 @@
-use std::sync::{Mutex, Arc};
+use std::sync::{Mutex, Arc, RwLock};
 use crate::thread_pool::ThreadPool;
 use crate::resultservice::ResultService;
 use std::collections::VecDeque;
@@ -6,7 +6,7 @@ use crate::reservation::ReservationResult;
 use std::cmp::{max, min};
 
 pub struct StatsService {
-    thread_pool : ThreadPool,
+    thread_pool : Mutex<ThreadPool>,
     history: Arc<Mutex<VecDeque<ReservationResult>>>,
 }
 
@@ -24,7 +24,7 @@ impl StatsService {
     pub fn new(rate_limit: usize, moving_avg: usize) -> StatsService {
         let thread_pool = ThreadPool::new(rate_limit);
         StatsService {
-            thread_pool,
+            thread_pool : Mutex::new(thread_pool),
             history :  Arc::new(Mutex::new(VecDeque::with_capacity(moving_avg))),
         }
     }
@@ -32,7 +32,7 @@ impl StatsService {
     pub fn process_result_stats(&self, f :ReservationResult) {
         let history = self.history.clone();
 
-        self.thread_pool.execute(move || {
+        self.thread_pool.lock().expect("poisoned lock").execute(move || {
             let mut h = history.lock().expect("could not acquire history");
             if h.len() >= h.capacity(){
                 h.pop_back();
