@@ -49,13 +49,13 @@ impl ScheduleService {
                         let r1 = thread::spawn(move ||{
                             return webservice.process(hotel_res.clone(), now.clone())
                         } );
-                        let r2 = hotel_webservice.process(reservation.clone(), now);
+                        let r2 = hotel_webservice.process(reservation.clone(), now.clone());
                         let r1 = r1.join().unwrap();
 
                         let duration = Duration::from_secs_f32(
                             r1.time_to_process.as_secs_f32().max(r2.time_to_process.as_secs_f32()));
 
-                        let result = ReservationResult::from_reservation_ref(reservation,
+                        let result = ReservationResult::from_reservation_ref(reservation.clone(),
                                                                              r1.accepted && r2.accepted,
                                                                              duration);
                         self.result_service.process_result(result);

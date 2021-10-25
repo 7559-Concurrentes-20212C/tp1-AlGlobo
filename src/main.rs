@@ -44,7 +44,7 @@ fn main() {
     let mut web_services : HashMap<String, ScheduleService> = HashMap::new();
 
     //creates hotel
-    let hotel = Arc::new(Webservice::new(RATE_LIMIT ,100));
+    let hotel = Arc::new(Webservice::new(100));
 
     load_services("valid_airlines.txt".parse().unwrap(),
                   &web_services,
@@ -80,7 +80,7 @@ fn load_services(file_name: String,
         let params = line.split(',').collect::<Vec<&str>>();
         let capacity = params[2].parse::<usize>().unwrap();
         let rate = params[3].parse::<usize>().unwrap();
-        let webservice = Arc::new(Webservice::new(capacity ,rate));
+        let webservice = Arc::new(Webservice::new(rate));
         web_services.insert(params[0].parse().unwrap(), ScheduleService::new(capacity,
                                                                              webservice,
                                                                              hotel.clone(),
