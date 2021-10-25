@@ -21,13 +21,13 @@ impl Webservice {
 
     pub fn new(success_chance: usize) -> Webservice {
         Webservice {
-            success_rate: success_chance % 100,
+            success_rate: success_chance.min(100),
         }
     }
 
     fn decide(&self) -> Decision{
         let i: i32 = rand::random();
-        if i % 100 <= self.success_rate as i32 {
+        if self.success_rate > 0 && (i % 100000) <= (self.success_rate * 1000)  as i32 {
             return Decision::Accepted;
         }
         return Decision::Rejected;

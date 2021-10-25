@@ -35,7 +35,7 @@ impl ScheduleService {
         let webservice = self.webservice.clone();
         let hotel_webservice = self.hotel_webservice.clone();
         let result_service = self.result_service.clone();
-        let now = Arc::new(Instant::now());
+        let mut now = Arc::new(Instant::now());
         let rate_limit = self.rate_limit;
 
         println!("schedule request for {} with {}-{}", reservation.airline, reservation.destination, reservation.destination);
@@ -71,6 +71,7 @@ impl ScheduleService {
                         let s = result.accepted;
                         result_service.process_result(result);
                         if s {break} else {
+                            now = Arc::new(Instant::now());
                             println!("reservation processing failed for {} with {}-{}",
                                      reservation.airline, reservation.destination, reservation.destination);
                         }
