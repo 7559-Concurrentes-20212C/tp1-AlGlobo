@@ -35,6 +35,7 @@ impl ScheduleService {
         let now = Arc::new(Instant::now());
         const TRIES: u32 = 10;
 
+        println!("schedule request for {} with {}-{}", reservation.airline, reservation.destination, reservation.destination);
         self.thread_pool.lock().expect("lock is poisoned").execute(move || {
             for _i in 0..TRIES {
 
@@ -66,7 +67,10 @@ impl ScheduleService {
                                                                              duration);
                         let s = result.accepted;
                         result_service.process_result(result);
-                        if s {break}
+                        if s {break} else {
+                            println!("reservation processing failed for {} with {}-{}",
+                                     reservation.airline, reservation.destination, reservation.destination);
+                        }
                     }
                 }
 

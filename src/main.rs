@@ -9,24 +9,31 @@ use webservice::Webservice;
 use resultservice::ResultService;
 use reservation::{Reservation};
 
-use core::time;
-use std::sync::Arc;
+use std::sync::{Arc, Condvar, Mutex};
 use std::collections::HashMap;
 use std::env;
 use std::fs::File;
 use std::io::BufRead;
 use std::io::BufReader;
-use std::thread;
 use crate::schedule_service::ScheduleService;
 
 fn main() {
 
+    println!("Setting up environment...");
     let _args: Vec<String> = env::args().collect();
 
     const RATE_LIMIT: usize = 4;
     let reservations : String = String::from("reservations.txt");
     let airlines : String = String::from("valid_airlines.txt");
+    let exit_cv = Arc::new((Mutex::new(false), Condvar::new()));
+    let exit_cv2 = Arc::clone(&exit_cv);
 
+    ctrlc::set_handler(move || {
+        let (lock, cvar) = &*exit_cv2;
+        let mut started = lock.lock().unwrap();
+        *started = true;
+        cvar.notify_one();
+    }).expect("Error setting Ctrl-C handler");
 
     // let filename = &args[0];
     let f = File::open(reservations);
@@ -36,27 +43,33 @@ fn main() {
             println!("problem opening file: {:?}", error);
             return;},
     };
-    println!("loaded");
-
     let reader = BufReader::new(file);
 
     //creates service for handling incoming results
     let results_service = Arc::new(ResultService::new(RATE_LIMIT));
-
     //creates hotel
     let hotel = Arc::new(Webservice::new(100));
-
     //creates all web services
     let web_services = load_services(airlines,&results_service, hotel).unwrap();
-    println!("loaded");
+
+    println!("Set up finished!");
+
     for line in reader.lines().flatten() {
         let reservation = Arc::new(Reservation::from_line(line));
-        web_services.get(&*reservation.airline).unwrap().schedule_to_process(reservation); //todo handle unwrap => nonexistent airline
+        let scheduler = match web_services.get(&*reservation.airline) {
+            None => {println!("invalid airline reservation: {}", reservation.airline); continue}
+            Some(s) => {s}
+        };
+        scheduler.schedule_to_process(reservation);
+    }
+    println!("finished scheduling reservations!");
+
+    let (lock, cvar) = &*exit_cv;
+    let mut started = lock.lock().unwrap();
+    while !*started {
+        started = cvar.wait(started).unwrap();
     }
 
-    //si aca habria que hacer esperar al main, por ahi que lea de consola un x o algo
-    thread::sleep(time::Duration::from_millis(15000)); //TODO si no pongo esto el main sale de scope y ordena a terminar el resto de los threads
-    println!("finished!");
     results_service.print_results();
 }
 
