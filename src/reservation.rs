@@ -1,8 +1,12 @@
 use crate::resultservice;
 
+
 use resultservice::{ResultService}; 
 use std::sync::Arc;
+use std::sync::Mutex;
+use std::sync::mpsc::Sender;
 use std::time::{Duration};
+use std::sync::{mpsc};
 
 pub enum ReservationKind {
     Flight,
@@ -35,20 +39,19 @@ impl Reservation {
 
 }
 
-type ResultCallback = fn(ReservationResult);
 
 pub struct ReservationProcessRequest {
     pub reservation: Arc<Reservation>,
-    callback: ResultCallback
+    callback_channel: Arc<Mutex<Sender<ReservationResult>>>,
 }
 
 impl ReservationProcessRequest{
-    pub fn new(reservation: Arc<Reservation>, callback: ResultCallback) -> ReservationProcessRequest {
-        return ReservationProcessRequest{reservation, callback};
+    pub fn new(reservation: Arc<Reservation>, callback_channel: Arc<Mutex<Sender<ReservationResult>>>) -> ReservationProcessRequest {
+        return ReservationProcessRequest{reservation, callback_channel};
     }
 
     pub fn resolve(&self, reservation_result: ReservationResult){
-        (self.callback)(reservation_result);
+        self.callback_channel.send(reservation_result);
     }
 }
 

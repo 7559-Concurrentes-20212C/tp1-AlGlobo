@@ -1,6 +1,6 @@
 use crate::webservice::Webservice;
 use std::collections::HashMap;
-use std::sync::{Arc, mpsc};
+use std::sync::{Arc, Mutex, mpsc};
 use crate::reservation::{Reservation, ReservationKind, ReservationResult, ReservationProcessRequest};
 use crate::thread_pool::ThreadPool;
 use crate::resultservice::ResultService;
@@ -33,11 +33,7 @@ impl ScheduleService {
 
         self.thread_pool.execute(move || {
             let (sender, receiver) = mpsc::channel();
-            let reservation_req = Arc::new(ReservationProcessRequest::new(
-                reservation.clone(),
-                |res| {
-                    sender.send(res);
-                }));
+            let reservation_req = Arc::new(ReservationProcessRequest::new(reservation.clone(), Arc::new(Mutex::new(sender))));
 
             match reservation.kind {
                 ReservationKind::Flight => {
@@ -54,7 +50,7 @@ impl ScheduleService {
                     let r2 = receiver.recv().unwrap();
 
                     let duration = Duration::from_secs_f32(
-                        r1.duration.as_secs_f32().max(r2.duration.as_secs_f32()));
+                        r1.time_to_process.as_secs_f32().max(r2.time_to_process.as_secs_f32()));
 
                     let result = ReservationResult::from_reservation_ref(reservation,
                                                                          r1.accepted && r2.accepted,
