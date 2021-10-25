@@ -21,10 +21,9 @@ use crate::schedule_service::ScheduleService;
 
 fn main() {
 
-    let args: Vec<String> = env::args().collect();
+    let _args: Vec<String> = env::args().collect();
 
     const RATE_LIMIT: usize = 4;
-    const SUCCESS_CHANCE : usize = 70;
     let reservations : String = String::from("reservations.txt");
     let airlines : String = String::from("valid_airlines.txt");
 
@@ -36,6 +35,7 @@ fn main() {
             println!("problem opening file: {:?}", error);
             return;},
     };
+
     let reader = BufReader::new(file);
 
     //creates service for handling incoming results
@@ -45,7 +45,7 @@ fn main() {
     let hotel = Arc::new(Webservice::new(100));
 
     //creates all web services
-    let mut web_services = load_services(airlines.parse().unwrap(),&results_service, hotel);
+    let mut web_services = load_services(airlines,&results_service, hotel).unwrap();
 
     for line in reader.lines().flatten() {
         let reservation = Arc::new(Reservation::from_line(line));
@@ -75,8 +75,8 @@ fn load_services(file_name: String,
 
     for line in reader.lines().flatten() {
         let params = line.split(',').collect::<Vec<&str>>();
-        let capacity = params[2].parse::<usize>().unwrap();
-        let rate = params[3].parse::<usize>().unwrap();
+        let capacity = params[1].parse::<usize>().unwrap();
+        let rate = params[2].parse::<usize>().unwrap();
         let webservice = Arc::new(Webservice::new(rate));
         web_services.insert(params[0].parse().unwrap(), ScheduleService::new(capacity,
                                                                              webservice,

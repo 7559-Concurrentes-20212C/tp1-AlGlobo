@@ -1,14 +1,12 @@
-use crate::thread_pool;
 use crate::reservation;
 extern crate rand;
 
 use std::thread;
 use std::time;
-use thread_pool::{ThreadPool};
 use reservation::{Reservation};
 use std::sync::Arc;
-use std::time::{Duration, Instant};
-use crate::reservation::{ReservationResult, ReservationProcessRequest};
+use std::time::{Instant};
+use crate::reservation::{ReservationResult};
 
 enum Decision {
     Accepted,

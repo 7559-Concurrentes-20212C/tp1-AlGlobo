@@ -1,9 +1,7 @@
-use std::sync::{Mutex, Arc, RwLock};
+use std::sync::{Mutex, Arc};
 use crate::thread_pool::ThreadPool;
-use crate::resultservice::ResultService;
 use std::collections::VecDeque;
 use crate::reservation::ReservationResult;
-use std::cmp::{max, min};
 
 pub struct StatsService {
     thread_pool : Mutex<ThreadPool>,
