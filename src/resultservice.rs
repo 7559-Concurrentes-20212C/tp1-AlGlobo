@@ -29,10 +29,6 @@ impl ResultService {
 
     }
 
-    pub fn get_stats_history(&self) -> MovingStats {
-        return self.stats.calculate_stats();
-    }
-
     pub fn print_results(&self) {
         let stats = self.stats.calculate_stats();
         println!("sample size {}", stats.sample_size);

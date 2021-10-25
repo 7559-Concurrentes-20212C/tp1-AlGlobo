@@ -1,6 +1,5 @@
 use std::sync::Arc;
 use std::time::{Duration};
-use std::time::{Instant};
 
 pub enum ReservationKind {
     Flight,
@@ -34,18 +33,6 @@ impl Reservation {
 }
 
 
-pub struct ReservationProcessRequest {
-    pub reservation: Arc<Reservation>,
-    requested: Instant,
-}
-
-impl ReservationProcessRequest{
-    pub fn new(reservation: Arc<Reservation>, requested: Instant) -> ReservationProcessRequest {
-        return ReservationProcessRequest{reservation, requested};
-    }
-
-}
-
 pub struct ReservationResult {
     pub origin: String,
     pub destination: String,
@@ -56,16 +43,6 @@ pub struct ReservationResult {
 }
 
 impl ReservationResult {
-    pub fn from_reservation(reservation : Reservation, accepted : bool, delay : Duration) -> ReservationResult {
-        ReservationResult {
-            origin: reservation.origin,
-            destination: reservation.destination,
-            airline: reservation.airline,
-            accepted,
-            time_to_process : delay,
-            kind: reservation.kind
-        }
-    }
 
     pub fn from_reservation_ref(reservation : Arc<Reservation>, accepted : bool, delay : Duration) -> ReservationResult {
         ReservationResult {

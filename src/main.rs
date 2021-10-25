@@ -27,6 +27,7 @@ fn main() {
     let reservations : String = String::from("reservations.txt");
     let airlines : String = String::from("valid_airlines.txt");
 
+
     // let filename = &args[0];
     let f = File::open(reservations);
     let file = match f {
@@ -35,6 +36,7 @@ fn main() {
             println!("problem opening file: {:?}", error);
             return;},
     };
+    println!("loaded");
 
     let reader = BufReader::new(file);
 
@@ -45,8 +47,8 @@ fn main() {
     let hotel = Arc::new(Webservice::new(100));
 
     //creates all web services
-    let mut web_services = load_services(airlines,&results_service, hotel).unwrap();
-
+    let web_services = load_services(airlines,&results_service, hotel).unwrap();
+    println!("loaded");
     for line in reader.lines().flatten() {
         let reservation = Arc::new(Reservation::from_line(line));
         web_services.get(&*reservation.airline).unwrap().schedule_to_process(reservation); //todo handle unwrap => nonexistent airline
