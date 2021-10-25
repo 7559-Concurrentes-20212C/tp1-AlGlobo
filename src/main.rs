@@ -26,6 +26,7 @@ fn main() {
     const RATE_LIMIT: usize = 4;
     const SUCCESS_CHANCE : usize = 70;
     let reservations : String = String::from("reservations.txt");
+    let airlines : String = String::from("valid_airlines.txt");
 
     // let filename = &args[0];
     let f = File::open(reservations);
@@ -40,16 +41,11 @@ fn main() {
     //creates service for handling incoming results
     let results_service = Arc::new(ResultService::new(RATE_LIMIT));
 
-    //creates all web services container
-    let mut web_services : HashMap<String, ScheduleService> = HashMap::new();
-
     //creates hotel
     let hotel = Arc::new(Webservice::new(100));
 
-    load_services("valid_airlines.txt".parse().unwrap(),
-                  &web_services,
-                  results_service,
-                  hotel);
+    //creates all web services
+    let mut web_services = load_services(airlines.parse().unwrap(),&results_service, hotel);
 
     for line in reader.lines().flatten() {
         let reservation = Arc::new(Reservation::from_line(line));
@@ -63,18 +59,19 @@ fn main() {
 }
 
 fn load_services(file_name: String,
-                 mut web_services : &HashMap<String, ScheduleService>,
-                 resultservice: Arc<ResultService>,
-                 hotel : Arc<Webservice> ){
+                 resultservice: &Arc<ResultService>,
+                 hotel : Arc<Webservice> ) -> Option<HashMap<String, ScheduleService>>{
 
     let f = File::open(file_name);
     let file = match f {
         Ok(file) => file,
         Err(error) => {
             println!("problem opening file: {:?}", error);
-            return;},
+            return None;},
     };
     let reader = BufReader::new(file);
+
+    let mut web_services : HashMap<String, ScheduleService> = HashMap::new();
 
     for line in reader.lines().flatten() {
         let params = line.split(',').collect::<Vec<&str>>();
@@ -86,4 +83,5 @@ fn load_services(file_name: String,
                                                                              hotel.clone(),
                                                                              resultservice.clone()));
     }
+    return Some(web_services)
 }
