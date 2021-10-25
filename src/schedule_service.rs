@@ -9,7 +9,7 @@ use std::thread;
 use std::time::{Instant};
 
 pub struct ScheduleService {
-    thread_pool : ThreadPool,
+    thread_pool : Mutex<ThreadPool>,
     webservice: Arc<Webservice>,
     hotel_webservice: Arc<Webservice>,
     result_service: Arc<ResultService>
@@ -22,7 +22,7 @@ impl ScheduleService {
                 result_service: Arc<ResultService>) -> ScheduleService {
 
         return ScheduleService{
-            thread_pool: ThreadPool::new(rate_limit),
+            thread_pool: Mutex::new(ThreadPool::new(rate_limit)),
             webservice,
             hotel_webservice,
             result_service};
@@ -32,16 +32,17 @@ impl ScheduleService {
     pub fn schedule_to_process(&self, reservation : Arc<Reservation>){
         let webservice = self.webservice.clone();
         let hotel_webservice = self.hotel_webservice.clone();
+        let result_service = self.result_service.clone();
         let now = Arc::new(Instant::now());
         const TRIES: u32 = 10;
 
-        self.thread_pool.execute(move || {
+        self.thread_pool.lock().expect("lock is poisoned").execute(move || {
             for i in 0..TRIES {
 
                 match reservation.kind {
                     ReservationKind::Flight => {
                         let result = webservice.process(reservation.clone(), now.clone());
-                        self.result_service.process_result(result);
+                        result_service.process_result(result);
                         if result.accepted {break}
                     }
                     ReservationKind::Package => {
@@ -58,7 +59,7 @@ impl ScheduleService {
                         let result = ReservationResult::from_reservation_ref(reservation.clone(),
                                                                              r1.accepted && r2.accepted,
                                                                              duration);
-                        self.result_service.process_result(result);
+                        result_service.process_result(result);
                         if result.accepted {break}
                     }
                 }
