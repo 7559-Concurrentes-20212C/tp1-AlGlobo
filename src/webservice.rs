@@ -14,14 +14,14 @@ enum Decision {
 }
 
 pub struct Webservice {
-    success_rate: usize
+    success_rate: usize,
 }
 
 impl Webservice {
 
     pub fn new(success_chance: usize) -> Webservice {
         Webservice {
-            success_rate: success_chance % 100
+            success_rate: success_chance % 100,
         }
     }
 

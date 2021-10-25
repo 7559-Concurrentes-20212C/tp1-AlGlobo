@@ -33,11 +33,10 @@ impl ScheduleService {
         let hotel_webservice = self.hotel_webservice.clone();
         let result_service = self.result_service.clone();
         let now = Arc::new(Instant::now());
-        const TRIES: u32 = 10;
 
         println!("schedule request for {} with {}-{}", reservation.airline, reservation.destination, reservation.destination);
         self.thread_pool.lock().expect("lock is poisoned").execute(move || {
-            for _i in 0..TRIES {
+            for _ in 0..self.rate_limit {
 
                 match reservation.kind {
                     ReservationKind::Flight => {
