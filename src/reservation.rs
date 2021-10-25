@@ -7,6 +7,7 @@ use std::sync::Mutex;
 use std::sync::mpsc::Sender;
 use std::time::{Duration};
 use std::sync::{mpsc};
+use std::time::{Instant};
 
 pub enum ReservationKind {
     Flight,
@@ -42,17 +43,14 @@ impl Reservation {
 
 pub struct ReservationProcessRequest {
     pub reservation: Arc<Reservation>,
-    callback_channel: Arc<Mutex<Sender<ReservationResult>>>,
+    requested: Instant,
 }
 
 impl ReservationProcessRequest{
-    pub fn new(reservation: Arc<Reservation>, callback_channel: Arc<Mutex<Sender<ReservationResult>>>) -> ReservationProcessRequest {
-        return ReservationProcessRequest{reservation, callback_channel};
+    pub fn new(reservation: Arc<Reservation>, requested: Instant) -> ReservationProcessRequest {
+        return ReservationProcessRequest{reservation, requested};
     }
 
-    pub fn resolve(&self, reservation_result: ReservationResult){
-        self.callback_channel.send(reservation_result);
-    }
 }
 
 pub struct ReservationResult {

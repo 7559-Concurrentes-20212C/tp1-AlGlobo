@@ -35,14 +35,13 @@ impl Webservice {
         return Decision::Rejected;
     }
 
-    pub fn process(&self, req: Arc<Reservation>) -> ReservationResult {
-        let start = Instant::now();
+    pub fn process(&self, req: Arc<Reservation>, time_requested : Arc<Instant>) -> ReservationResult {
         let decision = self.decide();
 
         random_wait();
         let result = ReservationResult::from_reservation_ref(req,
                                             matches!(decision , Decision::Accepted),
-                                            start.elapsed());
+                                            time_requested.elapsed());
         return result;
     }
 }
