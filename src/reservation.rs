@@ -1,12 +1,5 @@
-use crate::resultservice;
-
-
-use resultservice::{ResultService}; 
 use std::sync::Arc;
-use std::sync::Mutex;
-use std::sync::mpsc::Sender;
 use std::time::{Duration};
-use std::sync::{mpsc};
 use std::time::{Instant};
 
 pub enum ReservationKind {

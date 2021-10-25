@@ -21,7 +21,7 @@ use crate::schedule_service::ScheduleService;
 
 fn main() {
 
-    let args: Vec<String> = env::args().collect();
+    let _args: Vec<String> = env::args().collect();
 
     const RATE_LIMIT: usize = 4;
     const SUCCESS_CHANCE : usize = 70;
@@ -41,7 +41,7 @@ fn main() {
     let results_service = Arc::new(ResultService::new(RATE_LIMIT));
 
     //creates all web services container
-    let mut web_services : HashMap<String, ScheduleService> = HashMap::new();
+    let web_services : HashMap<String, ScheduleService> = HashMap::new();
 
     //creates hotel
     let hotel = Arc::new(Webservice::new(100));
@@ -63,7 +63,7 @@ fn main() {
 }
 
 fn load_services(file_name: String,
-                 mut web_services : &HashMap<String, ScheduleService>,
+                 web_services : &HashMap<String, ScheduleService>,
                  resultservice: Arc<ResultService>,
                  hotel : Arc<Webservice> ){
 
