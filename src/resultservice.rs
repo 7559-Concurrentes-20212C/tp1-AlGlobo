@@ -4,7 +4,7 @@ use crate::reservation;
 use std::sync::{Mutex, Arc};
 use reservation::{ReservationResult};
 use thread_pool::{ThreadPool};
-use crate::stats_service::{StatsService};
+use crate::stats_service::{StatsService, MovingStats};
 
 pub struct ResultService {
     thread_pool : Mutex<ThreadPool>,
@@ -28,12 +28,13 @@ impl ResultService {
 
     }
 
-    pub fn print_results(&self) {
+    pub fn print_results(&self) -> MovingStats {
         let stats = self.stats.calculate_stats();
         println!("sample size {}", stats.sample_size);
         println!("avg latency {}", stats.avg_latency);
         println!("success rate {}", stats.success_rate);
         println!("lowest latency {}", stats.lowest_latency);
         print!("highest latency {}", stats.highest_latency);
+        return stats;
     }
 }

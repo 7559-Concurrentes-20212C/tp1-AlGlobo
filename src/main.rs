@@ -4,6 +4,7 @@ mod resultservice;
 mod webservice;
 mod stats_service;
 mod schedule_service;
+mod unit_tests;
 
 use webservice::Webservice;
 use resultservice::ResultService;
