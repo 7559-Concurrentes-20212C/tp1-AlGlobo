@@ -28,43 +28,41 @@ impl ScheduleService {
             result_service};
     }
 
-    pub fn schedule_to_process(&self, reservation: Arc<Reservation>){
 
-        const TRIES : u32 = 10;
-        
-        for i in 0..TRIES{
-            let result = self._schedule_to_process(reservation.clone());
-            let s = result.accepted;
-            self.result_service.process_result(result);
-            if s { break }
-        }
-
-    fn _schedule_to_process(&self, reservation : Arc<Reservation>) -> ReservationResult{
+    pub fn schedule_to_process(&self, reservation : Arc<Reservation>){
         let webservice = self.webservice.clone();
         let hotel_webservice = self.hotel_webservice.clone();
         let now = Arc::new(Instant::now());
+        const TRIES: u32 = 10;
 
         self.thread_pool.execute(move || {
-            match reservation.kind {
-                ReservationKind::Flight => {
-                    return webservice.process(reservation, now)
-                }
-                ReservationKind::Package => {
-                    let hotel_res = reservation.clone();
-                    let r1 = thread::spawn(move ||{
-                        return webservice.process(hotel_res.clone(), now)
-                    } );
-                    let r2 = hotel_webservice.process(reservation.clone(), now);
-                    let r1 = r1.join().unwrap();
+            for i in 0..TRIES {
 
-                    let duration = Duration::from_secs_f32(
-                        r1.time_to_process.as_secs_f32().max(r2.time_to_process.as_secs_f32()));
+                match reservation.kind {
+                    ReservationKind::Flight => {
+                        let result = webservice.process(reservation.clone(), now.clone());
+                        self.result_service.process_result(result);
+                        if result.accepted {break}
+                    }
+                    ReservationKind::Package => {
+                        let hotel_res = reservation.clone();
+                        let r1 = thread::spawn(move ||{
+                            return webservice.process(hotel_res.clone(), now.clone())
+                        } );
+                        let r2 = hotel_webservice.process(reservation.clone(), now);
+                        let r1 = r1.join().unwrap();
 
-                    let result = ReservationResult::from_reservation_ref(reservation,
-                                                                         r1.accepted && r2.accepted,
-                                                                         duration);
-                    return result;
+                        let duration = Duration::from_secs_f32(
+                            r1.time_to_process.as_secs_f32().max(r2.time_to_process.as_secs_f32()));
+
+                        let result = ReservationResult::from_reservation_ref(reservation,
+                                                                             r1.accepted && r2.accepted,
+                                                                             duration);
+                        self.result_service.process_result(result);
+                        if result.accepted {break}
+                    }
                 }
+
             }
         })
     }
