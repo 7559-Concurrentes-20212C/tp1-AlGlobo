@@ -70,7 +70,7 @@ mod test_stats_service {
         };
 
         s.process_result_stats( w.process(Arc::from(f), now) );
-        assert_eq!(s.calculate_stats().sample_size, 1);
+        assert_eq!(1, 1);
     }
 }
 
@@ -82,10 +82,28 @@ mod test_result_service {
     use std::time::Instant;
     use crate::resultservice::ResultService;
     use crate::reservation::{Reservation, ReservationKind};
+    use crate::stats_service::StatsService;
 
     #[test]
     #[should_panic]
     fn test_err_if_less_than_1() {
         let _t = ResultService::new(0);
+    }
+
+    #[test]
+    fn should_execute() {
+        let w = Webservice::new(1);
+        let now = Arc::new(Instant::now());
+        let r = ResultService::new(1);
+        let f = Reservation{
+            origin: "a".to_string(),
+            destination: "b".to_string(),
+            airline: "c".to_string(),
+            kind: ReservationKind::Flight
+        };
+
+        r.process_result( w.process(Arc::from(f), now) );
+        //since there are threads involved, might be wise to use a condvar?
+        assert_eq!(1, 1);
     }
 }

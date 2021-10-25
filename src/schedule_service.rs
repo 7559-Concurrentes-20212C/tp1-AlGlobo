@@ -11,7 +11,8 @@ pub struct ScheduleService {
     thread_pool : Mutex<ThreadPool>,
     webservice: Arc<Webservice>,
     hotel_webservice: Arc<Webservice>,
-    result_service: Arc<ResultService>
+    result_service: Arc<ResultService>,
+    rate_limit : usize
 }
 
 impl ScheduleService {
@@ -24,7 +25,9 @@ impl ScheduleService {
             thread_pool: Mutex::new(ThreadPool::new(rate_limit)),
             webservice,
             hotel_webservice,
-            result_service};
+            result_service,
+            rate_limit
+        };
     }
 
 
@@ -33,10 +36,11 @@ impl ScheduleService {
         let hotel_webservice = self.hotel_webservice.clone();
         let result_service = self.result_service.clone();
         let now = Arc::new(Instant::now());
+        let rate_limit = self.rate_limit;
 
         println!("schedule request for {} with {}-{}", reservation.airline, reservation.destination, reservation.destination);
         self.thread_pool.lock().expect("lock is poisoned").execute(move || {
-            for _ in 0..self.rate_limit {
+            for _ in 0..rate_limit {
 
                 match reservation.kind {
                     ReservationKind::Flight => {
