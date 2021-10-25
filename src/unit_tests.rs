@@ -1,8 +1,7 @@
-/*use std::sync::{Arc, mpsc, Mutex};
+use std::sync::{Arc, mpsc, Mutex};
 
 #[cfg(test)]
 mod tests_thread_pool {
-    // Note this useful idiom: importing names from outer (for mod tests) scope.
     use super::*;
     use crate::thread_pool;
     use thread_pool::{ThreadPool};
@@ -10,7 +9,7 @@ mod tests_thread_pool {
     #[test]
     #[should_panic]
     fn test_err_if_less_than_1() {
-        let t = ThreadPool::new(0);
+        let _t = ThreadPool::new(0);
     }
 
     #[test]
@@ -20,7 +19,7 @@ mod tests_thread_pool {
         let t = ThreadPool::new(1);
 
         t.execute(move || {
-            sd.lock().expect("could not lock").send(1 + 1);
+            sd.lock().expect("could not lock").send(1 + 1).unwrap();
         });
 
         assert_eq!(recv.recv().expect("failed to receive"), 2);
@@ -28,55 +27,65 @@ mod tests_thread_pool {
 }
 
 #[cfg(test)]
-mod tests_result_service {
-    // Note this useful idiom: importing names from outer (for mod tests) scope.
-    use super::*;
-    use crate::resultservice::ResultService;
-
-    #[test]
-    #[should_panic]
-    fn test_err_if_less_than_1() {
-        let t = ResultService::new(0);
-    }
-}
-
-#[cfg(test)]
 mod tests_webservice {
-    // Note this useful idiom: importing names from outer (for mod tests) scope.
     use super::*;
     use crate::webservice::Webservice;
-    use crate::resultservice::ResultService;
-    use crate::flight::Flight;
-
-    #[test]
-    #[should_panic]
-    fn test_err_if_less_than_1() {
-        let t = Webservice::new(0);
-    }
+    use std::time::Instant;
+    use crate::reservation::{Reservation, ReservationKind};
 
     #[test]
     fn should_execute() {
         let w = Webservice::new(1);
-        let f = Flight{
+        let now = Arc::new(Instant::now());
+        let f = Arc::new(Reservation{
             origin: "a".to_string(),
             destination: "b".to_string(),
             airline: "c".to_string(),
-            result_service: Arc::new(ResultService::new(1))};
+            kind: ReservationKind::Flight
+        });
 
-        w.process(f);
-
-        // unfinished until resultservice does something interesting with the results
-        assert_eq!(0, 2);
+        assert_eq!( w.process(f.clone(), now).airline,  f.airline);
     }
 }
 
 #[cfg(test)]
 mod test_stats_service {
-    // Note this useful idiom: importing names from outer (for mod tests) scope.
+
     use super::*;
+    use crate::webservice::Webservice;
+    use crate::stats_service::StatsService;
+    use std::time::Instant;
+    use crate::reservation::{Reservation, ReservationKind};
 
     #[test]
     fn should_execute() {
+        let s = StatsService::new(1, 1);
+        let w = Webservice::new(1);
+        let now = Arc::new(Instant::now());
+        let f = Reservation{
+            origin: "a".to_string(),
+            destination: "b".to_string(),
+            airline: "c".to_string(),
+            kind: ReservationKind::Flight
+        };
 
+        s.process_result_stats( w.process(Arc::from(f), now) );
+        assert_eq!(s.calculate_stats().sample_size, 1);
     }
-}*/
+}
+
+#[cfg(test)]
+mod test_result_service {
+
+    use super::*;
+    use crate::webservice::Webservice;
+    use std::time::Instant;
+    use crate::resultservice::ResultService;
+    use crate::reservation::{Reservation, ReservationKind};
+
+    #[test]
+    #[should_panic]
+    fn test_err_if_less_than_1() {
+        let _t = ResultService::new(0);
+    }
+}
