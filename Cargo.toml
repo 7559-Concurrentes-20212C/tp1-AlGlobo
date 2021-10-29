@@ -16,3 +16,4 @@ path = "src/lib.rs"
 [dependencies]
 rand = "0.8.4"
 ctrlc = { version = "3.0", features = ["termination"] }
+actix = "0.12"
