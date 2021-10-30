@@ -1,16 +1,20 @@
 use std::sync::Arc;
-use std::time::{Duration};
+use std::time::{Duration, Instant};
+use actix::prelude::*;
 
 pub enum ReservationKind {
     Flight,
     Package,
 }
 
+#[derive(Message)]
+#[rtype(result = "ReservationResult")]
 pub struct Reservation {
     pub origin: String,
     pub destination: String,
     pub airline: String,
     pub kind: ReservationKind,
+    pub liveness_cronometer: Arc<Instant>,
 }
 
 impl Reservation {
@@ -27,12 +31,14 @@ impl Reservation {
                 "flight" => ReservationKind::Flight,
                 _ => ReservationKind::Package,
             },
+            liveness_cronometer: Arc::new(Instant::now()),
         }
     }
 
 }
 
-
+#[derive(Message)]
+#[rtype(result = "ReservationResult")]
 pub struct ReservationResult {
     pub origin: String,
     pub destination: String,
@@ -44,7 +50,7 @@ pub struct ReservationResult {
 
 impl ReservationResult {
 
-    pub fn from_reservation_ref(reservation : Arc<Reservation>, accepted : bool, delay : Duration) -> ReservationResult {
+    pub fn from_reservation_ref(reservation : Reservation, accepted : bool, delay : Duration) -> ReservationResult {
         ReservationResult {
             origin: reservation.origin.clone(),
             destination: reservation.destination.clone(),

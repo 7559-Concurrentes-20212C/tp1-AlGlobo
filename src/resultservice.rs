@@ -1,13 +1,10 @@
-use crate::thread_pool;
 use crate::reservation;
-
-use std::sync::{Mutex, Arc};
+use actix::{Actor, Context, Handler};
+use std::sync::{Arc};
 use reservation::{ReservationResult};
-use thread_pool::{ThreadPool};
 use crate::stats_service::{StatsService, MovingStats};
 
 pub struct ResultService {
-    thread_pool : Mutex<ThreadPool>,
     stats: Arc<StatsService>,
 }
 
@@ -15,17 +12,8 @@ impl ResultService {
 
     pub fn new(rate_limit: usize) -> ResultService {
         ResultService {
-            thread_pool : Mutex::new(ThreadPool::new(rate_limit)),
             stats: Arc::new(StatsService::new(rate_limit, 1000))
         }
-    }
-
-    pub fn process_result(&self, reservation: ReservationResult) {
-        let stats = self.stats.clone();
-        self.thread_pool.lock().expect("could not acquire thread").execute(move || { // TODO estaria bueno que escriba en un archivo tmb
-            stats.process_result_stats( reservation );
-        });
-
     }
 
     pub fn print_results(&self) -> MovingStats {
@@ -38,5 +26,19 @@ impl ResultService {
         println!("highest latency {}", stats.highest_latency);
         println!("--- STATS ---");
         return stats;
+    }
+}
+
+
+impl Actor for ResultService{
+    type Context = Context<Self>;
+}
+
+impl Handler<ReservationResult> for ResultService {
+
+    type Result = ();
+
+    fn handle(&mut self, msg: ReservationResult, _ctx: &mut Self::Context) -> Self::Result {
+        self.stats.process_result_stats( msg );
     }
 }

@@ -1,28 +1,28 @@
 
 use std::sync::{Arc};
+use actix::{Addr};
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::BufRead;
 use std::io::BufReader;
 use crate::schedule_service::ScheduleService;
-use crate::stats_service::MovingStats;
 use crate::resultservice::ResultService;
 use crate::webservice::Webservice;
 use crate::reservation::Reservation;
 
 pub struct Program {
-    results_service : Arc<ResultService>,
-    web_services : HashMap<String, ScheduleService>,
-    hotel : Arc<Webservice>
+    results_service : Arc<Addr<ResultService>>,
+    schedule_services : HashMap<String, ScheduleService>,
+    hotel : Arc<Addr<Webservice>>
 
 }
 
 impl Program {
     pub fn new(rate : usize) -> Program {
         return Program{
-            results_service: Arc::new(ResultService::new(rate)),
-            web_services: HashMap::new(),
-            hotel:  Arc::new(Webservice::new(100))
+            results_service: Arc::new(ResultService::new(rate).start()),
+            schedule_services: HashMap::new(),
+            hotel:  Arc::new(Webservice::new(100).start())
         }
     }
 
@@ -50,20 +50,16 @@ impl Program {
 
         for line in reader.lines().flatten() {
             let reservation = Arc::new(Reservation::from_line(line));
-            let scheduler = match self.web_services.get(&*reservation.airline) {
+            let scheduler = match self.schedule_services.get(&*reservation.airline) {
                 None => {
                     println!("invalid airline reservation: {}", reservation.airline);
                     continue
                 }
-                Some(s) => { s }
+                Some(s) => { *s }
             };
-            scheduler.schedule_to_process(reservation);
+            scheduler.try_send(reservation);
         }
         println!("finished scheduling reservations!");
-    }
-
-    pub fn print_results(&self) -> MovingStats {
-        return self.results_service.print_results();
     }
 
     pub fn load_services(&mut self, file_name: String) {
@@ -81,11 +77,10 @@ impl Program {
             let params = line.split(',').collect::<Vec<&str>>();
             let capacity = params[1].parse::<usize>().unwrap();
             let rate = params[2].parse::<usize>().unwrap();
-            let webservice = Arc::new(Webservice::new(rate));
-            self.web_services.insert(params[0].parse().unwrap(), ScheduleService::new(capacity,
-                                                                                 webservice,
-                                                                                 self.hotel.clone(),
-                                                                                 self.results_service.clone()));
+
+            let schedule_service_addr = ScheduleService::new(capacity, rate, self.hotel.clone(), self.results_service.clone()).start();
+
+            self.schedule_services.insert(params[0].parse().unwrap(), schedule_service_addr);
         }
     }
 }

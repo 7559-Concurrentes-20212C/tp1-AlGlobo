@@ -1,11 +1,9 @@
-use std::sync::{Mutex, Arc, RwLock};
-use crate::thread_pool::ThreadPool;
+use std::sync::{Arc};
 use std::collections::VecDeque;
 use crate::reservation::ReservationResult;
 
 pub struct StatsService {
-    thread_pool : Mutex<ThreadPool>,
-    history: Arc<RwLock<VecDeque<ReservationResult>>>,
+    history: Arc<VecDeque<ReservationResult>>,
 }
 
 //its called moving stats because it return stats for a moving window of max size history.capacity
@@ -20,23 +18,17 @@ pub struct MovingStats {
 impl StatsService {
 
     pub fn new(rate_limit: usize, moving_avg: usize) -> StatsService {
-        let thread_pool = ThreadPool::new(rate_limit);
         StatsService {
-            thread_pool : Mutex::new(thread_pool),
-            history :  Arc::new(RwLock::new(VecDeque::with_capacity(moving_avg))),
+            history :  Arc::new(VecDeque::with_capacity(moving_avg)),
         }
     }
 
     pub fn process_result_stats(&self, f :ReservationResult) {
-        let history = self.history.clone();
 
-        self.thread_pool.lock().expect("poisoned lock").execute(move || {
-            let mut h = history.write().expect("could not acquire history");
-            if h.len() >= h.capacity(){
-                h.pop_back();
-            }
-            h.push_front(f);
-        });
+        if self.history.len() >= self.history.capacity(){
+            self.history.pop_back();
+        }
+        self.history.push_front(f);
     }
 
     pub fn calculate_stats(&self) -> MovingStats{
@@ -45,9 +37,8 @@ impl StatsService {
         let mut avg_latency = 0.0;
         let mut highest_latency :f32 = 0.0;
         let mut lowest_latency :f32 = f32::MAX;
-        let history = self.history.read().expect("could not load history");
 
-        for val in history.iter() {
+        for val in self.history.iter() {
             if val.accepted {
                 success_rate += 1.0;
                 sample_size += 1;
@@ -67,8 +58,8 @@ impl StatsService {
 
         return MovingStats{
             sample_size,
-            success_rate: success_rate/history.len() as f32,
-            avg_latency: avg_latency/history.len() as f32,
+            success_rate: success_rate/self.history.len() as f32,
+            avg_latency: avg_latency/self.history.len() as f32,
             highest_latency,
             lowest_latency};
     }
