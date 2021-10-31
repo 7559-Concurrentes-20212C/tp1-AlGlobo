@@ -38,6 +38,10 @@ impl Handler<ReservationResult> for ResultService {
     type Result = ();
 
     fn handle(&mut self, msg: ReservationResult, _ctx: &mut Self::Context) -> Self::Result {
+
+        println!("RESULT SERVICE: recived result ({}|{}-{}|{}|{})", msg.reservation.airline, msg.reservation.origin,msg.reservation.destination,
+                                                               msg.reservation.kind, msg.accepted);
+
         self.stats.process_result_stats(msg);
     }
 }

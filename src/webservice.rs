@@ -3,20 +3,32 @@ use crate::reservation::{ReservationResult, ToProcessReservation};
 extern crate rand;
 use std::time::Duration;
 use actix::clock::sleep;
+use std::fmt;
 
 enum Decision {
     Accepted,
     Rejected,
 }
 
+impl fmt::Display for Decision {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            Decision::Accepted => write!(f, "Accepted"),
+            Decision::Rejected => write!(f, "Rejected"),
+        }
+    }
+}
+
 pub struct Webservice{
     success_rate: usize,
+    id: usize,
 }
 
 impl Webservice{
-    pub fn new(success_chance: usize) -> Webservice {
+    pub fn new(success_chance: usize, id: usize,) -> Webservice {
         Webservice {
             success_rate: success_chance.min(100),
+            id: id,
         }
     }
 
@@ -38,7 +50,11 @@ impl Handler<ToProcessReservation> for Webservice {
     type Result = ResponseActFuture<Self, ()>;
 
     fn handle(&mut self, msg: ToProcessReservation, _ctx: &mut Self::Context) -> Self::Result {
+
         let decision = self.decide();
+
+        println!("WEBSERVICE <{}>: recived reservation ({}|{}-{}|{}|{})", self.id, msg.reservation.airline, msg.reservation.origin, msg.reservation.destination,
+                                                                    msg.reservation.kind, decision);
 
         let i: i32 = rand::random();
         Box::pin(sleep(Duration::from_millis(i as u64 % 1000))

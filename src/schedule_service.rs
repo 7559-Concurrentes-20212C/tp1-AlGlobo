@@ -11,20 +11,23 @@ pub struct ScheduleService {
     result_service: Arc<Addr<ResultService>>,
     rate_limit : usize,
     results : Vec<ReservationResult>,
+    id: usize,
 }
 
 impl ScheduleService {
     pub fn new( rate_limit: usize,
                 success_chance: usize,
                 hotel_webservice: Arc<Addr<Webservice>>,
-                result_service: Arc<Addr<ResultService>>) -> ScheduleService {
+                result_service: Arc<Addr<ResultService>>,
+                id: usize) -> ScheduleService {
 
         return ScheduleService{
-            webservice : Webservice::new(success_chance).start(),
+            webservice : Webservice::new(success_chance, id).start(),
             hotel_webservice,
             result_service,
             rate_limit,
             results : vec!(),
+            id: id,
         };
     }
 }
@@ -39,7 +42,8 @@ impl Handler<Reservation> for ScheduleService {
 
     fn handle(&mut self, msg: Reservation, _ctx: &mut Self::Context)  -> Self::Result {
 
-        println!("schedule request for {} with {}-{}", msg.airline, msg.destination, msg.destination);
+        println!("SCHEDULER <{}>: recived reservation ({}|{}-{}|{})", self.id, msg.airline, msg.origin, msg.destination,
+                                                                    msg.kind);
 
         match msg.kind {
             ReservationKind::Flight => {
@@ -57,6 +61,9 @@ impl Handler<ReservationResult> for ScheduleService {
     type Result = ();
 
     fn handle(&mut self, msg: ReservationResult, _ctx: &mut Self::Context)  -> Self::Result {
+
+        println!("SCHEDULER <{}>: recived result ({}|{}-{}|{}|{})", self.id, msg.reservation.airline, msg.reservation.origin, msg.reservation.destination,
+                                                                 msg.reservation.kind, msg.accepted);
 
         match msg.reservation.kind {
             ReservationKind::Flight => {

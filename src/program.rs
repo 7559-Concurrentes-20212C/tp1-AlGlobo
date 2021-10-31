@@ -22,7 +22,7 @@ impl Program {
         return Program{
             results_service: Arc::new(ResultService::new().start()),
             schedule_services: HashMap::new(),
-            hotel:  Arc::new(Webservice::new(100).start()),
+            hotel:  Arc::new(Webservice::new(100, 0).start()),
             rate : rate,
         }
     }
@@ -51,6 +51,8 @@ impl Program {
 
         for line in reader.lines().flatten() {
             let reservation = Reservation::from_line(line);
+            println!("PROGRAM: parsed reservation ({}|{}-{}|{})", reservation.airline, reservation.origin, reservation.destination, reservation.kind);
+
             let scheduler = match self.schedule_services.get(&*reservation.airline) {
                 None => {
                     println!("invalid airline reservation: {}", reservation.airline);
@@ -60,7 +62,7 @@ impl Program {
             };
             scheduler.try_send(reservation);
         }
-        println!("finished scheduling reservations!");
+        println!("PROGRAM: finished processing reservations");
     }
 
     pub fn load_services(&mut self, file_name: String) {
@@ -74,14 +76,17 @@ impl Program {
         };
         let reader = BufReader::new(file);
 
+        let mut i = 1;
         for line in reader.lines().flatten() {
             let params = line.split(',').collect::<Vec<&str>>();
             let capacity = params[1].parse::<usize>().unwrap();
             let rate = params[2].parse::<usize>().unwrap();
 
-            let schedule_service_addr = ScheduleService::new(capacity, rate, self.hotel.clone(), self.results_service.clone()).start();
+            let schedule_service_addr = ScheduleService::new(capacity, rate, self.hotel.clone(), self.results_service.clone(), i).start();
 
             self.schedule_services.insert(params[0].parse().unwrap(), schedule_service_addr);
+
+            i = i + 1;
         }
     }
 }
