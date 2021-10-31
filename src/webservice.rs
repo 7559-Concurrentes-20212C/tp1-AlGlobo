@@ -1,5 +1,5 @@
 use actix::{Actor, ActorFutureExt, Context, Handler, ResponseActFuture, WrapFuture};
-use crate::reservation::{Reservation, ReservationResult};
+use crate::reservation::{ReservationResult, ToProcessReservation};
 extern crate rand;
 use std::time::Duration;
 use actix::clock::sleep;
@@ -34,22 +34,21 @@ impl Actor for Webservice{
     type Context = Context<Self>;
 }
 
-impl Handler<Reservation> for Webservice {
-    type Result = ResponseActFuture<Self, ReservationResult>;
+impl Handler<ToProcessReservation> for Webservice {
+    type Result = ResponseActFuture<Self, ()>;
 
-    fn handle(&mut self, msg: Reservation, _ctx: &mut Self::Context) -> Self::Result {
+    fn handle(&mut self, msg: ToProcessReservation, _ctx: &mut Self::Context) -> Self::Result {
         let decision = self.decide();
-
-
 
         let i: i32 = rand::random();
         Box::pin(sleep(Duration::from_millis(i as u64 % 1000))
         .into_actor(self)
-        .map(move |_result, me, _ctx| {
+        .map(move |_result, _me, _ctx| {
 
-            return ReservationResult::from_reservation_ref(msg,
-                matches!(decision , Decision::Accepted),
-                msg.liveness_cronometer.elapsed());
+            let reservation = msg.reservation;
+            let elapsed = reservation.alive_timer.elapsed();
+            let result = ReservationResult::from_reservation_ref(reservation, matches!(decision , Decision::Accepted), elapsed);
+            msg.sender.try_send(result);
         }))
     }
 }

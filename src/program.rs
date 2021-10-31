@@ -1,6 +1,6 @@
 
 use std::sync::{Arc};
-use actix::{Addr};
+use actix::{Addr, Actor};
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::BufRead;
@@ -12,17 +12,18 @@ use crate::reservation::Reservation;
 
 pub struct Program {
     results_service : Arc<Addr<ResultService>>,
-    schedule_services : HashMap<String, ScheduleService>,
-    hotel : Arc<Addr<Webservice>>
-
+    schedule_services : HashMap<String, Addr<ScheduleService>>,
+    hotel : Arc<Addr<Webservice>>,
+    rate : usize,
 }
 
 impl Program {
     pub fn new(rate : usize) -> Program {
         return Program{
-            results_service: Arc::new(ResultService::new(rate).start()),
+            results_service: Arc::new(ResultService::new().start()),
             schedule_services: HashMap::new(),
-            hotel:  Arc::new(Webservice::new(100).start())
+            hotel:  Arc::new(Webservice::new(100).start()),
+            rate : rate,
         }
     }
 
@@ -49,13 +50,13 @@ impl Program {
         println!("Set up finished!");
 
         for line in reader.lines().flatten() {
-            let reservation = Arc::new(Reservation::from_line(line));
+            let reservation = Reservation::from_line(line);
             let scheduler = match self.schedule_services.get(&*reservation.airline) {
                 None => {
                     println!("invalid airline reservation: {}", reservation.airline);
                     continue
                 }
-                Some(s) => { *s }
+                Some(s) => { &*s }
             };
             scheduler.try_send(reservation);
         }

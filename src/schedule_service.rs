@@ -1,7 +1,7 @@
-use actix::{Actor, Context, Handler, Addr};
+use actix::{Actor, Context, Handler, Addr, AsyncContext};
 use std::sync::{Arc};
 use crate::webservice::Webservice;
-use crate::reservation::{Reservation, ReservationKind, ReservationResult};
+use crate::reservation::{Reservation, ReservationKind, ReservationResult, ToProcessReservation};
 use crate::resultservice::{ResultService};
 use std::time::Duration;
 
@@ -9,7 +9,8 @@ pub struct ScheduleService {
     webservice: Addr<Webservice>,
     hotel_webservice: Arc<Addr<Webservice>>,
     result_service: Arc<Addr<ResultService>>,
-    rate_limit : usize
+    rate_limit : usize,
+    results : Vec<ReservationResult>,
 }
 
 impl ScheduleService {
@@ -22,7 +23,8 @@ impl ScheduleService {
             webservice : Webservice::new(success_chance).start(),
             hotel_webservice,
             result_service,
-            rate_limit
+            rate_limit,
+            results : vec!(),
         };
     }
 }
@@ -33,52 +35,60 @@ impl Actor for ScheduleService{
 }
 
 impl Handler<Reservation> for ScheduleService {
-
     type Result = ();
 
     fn handle(&mut self, msg: Reservation, _ctx: &mut Self::Context)  -> Self::Result {
-        let webservice = self.webservice.clone();
-        let hotel_webservice = self.hotel_webservice.clone();
-        let result_service = self.result_service.clone();
-        let rate_limit = self.rate_limit;
 
         println!("schedule request for {} with {}-{}", msg.airline, msg.destination, msg.destination);
-        for _ in 0..rate_limit {
 
-            match msg.kind {
-                ReservationKind::Flight => {
-                    let reservation_accepted = async move {
-                        let result = webservice.try_send(msg).unwrap();
-                        let reservation_accepted = result.accepted;
-                        result_service.try_send(result).unwrap();
-                        return reservation_accepted;
-                    };
+        match msg.kind {
+            ReservationKind::Flight => {
+                self.webservice.try_send(ToProcessReservation {reservation : msg.clone(), sender: _ctx.address().recipient()}).unwrap();
+            }
+            ReservationKind::Package => {
+                self.webservice.try_send(ToProcessReservation {reservation : msg.clone(), sender: _ctx.address().recipient()}).unwrap();
+                self.hotel_webservice.try_send(ToProcessReservation {reservation : msg.clone(), sender: _ctx.address().recipient()}).unwrap();
+            }
+        }
+    }
+}
 
-                    if reservation_accepted {break}
-                }
-                ReservationKind::Package => {
+impl Handler<ReservationResult> for ScheduleService {
+    type Result = ();
 
-                    let reservation_accepted = async move {
-                        let result1 = webservice.try_send(msg).unwrap();
-                        let result2 = hotel_webservice.try_send(msg).unwrap();
-    
-                        let result = ReservationResult::from_reservation_ref(msg,
-                                                                            result1.accepted && result2.accepted,
-                                                                            max_duration_between(result1.liveness_cronometer, result2.liveness_cronometer));
+    fn handle(&mut self, msg: ReservationResult, _ctx: &mut Self::Context)  -> Self::Result {
 
-                        let reservation_accepted = result.accepted;
-                        result_service.try_send(result);
-                        return reservation_accepted;
-                    };
+        match msg.reservation.kind {
+            ReservationKind::Flight => {
+                self.result_service.try_send(msg);
+            }
+            ReservationKind::Package => {
+                if self.results.len() == 2{     //webservice y hotel
 
-                    if reservation_accepted {break} else {
-                        println!("reservation processing failed for {} with {}-{}",
-                                    msg.airline, msg.destination, msg.destination);
+                    let r1 = msg;
+                    let r2 = self.results.pop().unwrap();
+        
+                    let reservation_accepted_val = r1.accepted && r2.accepted;
+                    
+                    let result = ReservationResult::from_reservation_ref(r1.reservation,
+                                                                        reservation_accepted_val,
+                                                                        max_duration_between(
+                                                                            r1.time_to_process,
+                                                                            r2.time_to_process));
+
+                    if reservation_accepted_val == false && result.reservation.current_attempt_num < result.reservation.max_attempts{
+                        let mut next_iteration_msg = result.reservation.clone();
+                        next_iteration_msg.current_attempt_num = next_iteration_msg.current_attempt_num + 1;
+                        _ctx.address().try_send(next_iteration_msg).unwrap();
                     }
+                    
+                    self.result_service.try_send(result);
+                } else {
+                    self.results.push(msg);
                 }
             }
         }
-    }    
+    }
 }
 
 fn max_duration_between(d1 : Duration, d2: Duration) -> Duration{

@@ -1,9 +1,8 @@
-use std::sync::{Arc};
 use std::collections::VecDeque;
 use crate::reservation::ReservationResult;
 
 pub struct StatsService {
-    history: Arc<VecDeque<ReservationResult>>,
+    history: VecDeque<ReservationResult>,
 }
 
 //its called moving stats because it return stats for a moving window of max size history.capacity
@@ -17,13 +16,13 @@ pub struct MovingStats {
 
 impl StatsService {
 
-    pub fn new(rate_limit: usize, moving_avg: usize) -> StatsService {
+    pub fn new(moving_avg: usize) -> StatsService {
         StatsService {
-            history :  Arc::new(VecDeque::with_capacity(moving_avg)),
+            history :  VecDeque::with_capacity(moving_avg),
         }
     }
 
-    pub fn process_result_stats(&self, f :ReservationResult) {
+    pub fn process_result_stats(&mut self, f :ReservationResult) {
 
         if self.history.len() >= self.history.capacity(){
             self.history.pop_back();

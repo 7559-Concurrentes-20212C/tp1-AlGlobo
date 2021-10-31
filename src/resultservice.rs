@@ -1,18 +1,17 @@
 use crate::reservation;
 use actix::{Actor, Context, Handler};
-use std::sync::{Arc};
 use reservation::{ReservationResult};
 use crate::stats_service::{StatsService, MovingStats};
 
 pub struct ResultService {
-    stats: Arc<StatsService>,
+    stats: StatsService,
 }
 
 impl ResultService {
 
-    pub fn new(rate_limit: usize) -> ResultService {
+    pub fn new() -> ResultService {
         ResultService {
-            stats: Arc::new(StatsService::new(rate_limit, 1000))
+            stats: StatsService::new(1000),
         }
     }
 
@@ -39,6 +38,6 @@ impl Handler<ReservationResult> for ResultService {
     type Result = ();
 
     fn handle(&mut self, msg: ReservationResult, _ctx: &mut Self::Context) -> Self::Result {
-        self.stats.process_result_stats( msg );
+        self.stats.process_result_stats(msg);
     }
 }
