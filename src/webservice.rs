@@ -53,7 +53,8 @@ impl Handler<ToProcessReservation> for Webservice {
 
         let decision = self.decide();
 
-        println!("WEBSERVICE <{}>: recived reservation ({}|{}-{}|{}|{})", self.id, msg.reservation.airline, msg.reservation.origin, msg.reservation.destination,
+        println!("WEBSERVICE <{}>: received reservation <{}>({}|{}-{}|{}|{})", self.id, msg.reservation.id,
+                                                                    msg.reservation.airline, msg.reservation.origin, msg.reservation.destination,
                                                                     msg.reservation.kind, decision);
 
         let i: i32 = rand::random();

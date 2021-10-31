@@ -4,13 +4,14 @@ use crate::webservice::Webservice;
 use crate::reservation::{Reservation, ReservationKind, ReservationResult, ToProcessReservation};
 use crate::resultservice::{ResultService};
 use std::time::Duration;
+use std::collections::HashMap;
 
 pub struct ScheduleService {
     webservice: Addr<Webservice>,
     hotel_webservice: Arc<Addr<Webservice>>,
     result_service: Arc<Addr<ResultService>>,
     rate_limit : usize,
-    results : Vec<ReservationResult>,
+    results : HashMap<usize, Vec<ReservationResult>>,
     id: usize,
 }
 
@@ -26,7 +27,7 @@ impl ScheduleService {
             hotel_webservice,
             result_service,
             rate_limit,
-            results : vec!(),
+            results : HashMap::new(),
             id: id,
         };
     }
@@ -42,7 +43,7 @@ impl Handler<Reservation> for ScheduleService {
 
     fn handle(&mut self, msg: Reservation, _ctx: &mut Self::Context)  -> Self::Result {
 
-        println!("SCHEDULER <{}>: recived reservation ({}|{}-{}|{})", self.id, msg.airline, msg.origin, msg.destination,
+        println!("SCHEDULER <{}>: received reservation <{}>({}|{}-{}|{})", self.id, msg.id, msg.airline, msg.origin, msg.destination,
                                                                     msg.kind);
 
         match msg.kind {
@@ -62,27 +63,34 @@ impl Handler<ReservationResult> for ScheduleService {
 
     fn handle(&mut self, msg: ReservationResult, _ctx: &mut Self::Context)  -> Self::Result {
 
-        println!("SCHEDULER <{}>: recived result ({}|{}-{}|{}|{})", self.id, msg.reservation.airline, msg.reservation.origin, msg.reservation.destination,
-                                                                 msg.reservation.kind, msg.accepted);
+        println!("SCHEDULER <{}>: received result <{}>({}|{}-{}|{}|{})", self.id, msg.reservation.id,
+                                                                msg.reservation.airline, msg.reservation.origin, msg.reservation.destination,
+                                                                msg.reservation.kind, msg.accepted);
+
 
         match msg.reservation.kind {
             ReservationKind::Flight => {
+
+                if msg.accepted == false && msg.reservation.current_attempt_num < msg.reservation.max_attempts{
+                    let mut next_iteration_msg = msg.reservation.clone();
+                    next_iteration_msg.current_attempt_num = next_iteration_msg.current_attempt_num + 1;
+                    _ctx.address().try_send(next_iteration_msg).unwrap();
+                }
+
                 self.result_service.try_send(msg);
             }
             ReservationKind::Package => {
-                if self.results.len() == 2{     //webservice y hotel
-
+                if self.results.contains_key(&msg.reservation.id) && self.results.get(&msg.reservation.id).unwrap().len() == 1 {
+                    let id = msg.reservation.id.clone();
                     let r1 = msg;
-                    let r2 = self.results.pop().unwrap();
-        
-                    let reservation_accepted_val = r1.accepted && r2.accepted;
-                    
-                    let result = ReservationResult::from_reservation_ref(r1.reservation,
-                                                                        reservation_accepted_val,
-                                                                        max_duration_between(
-                                                                            r1.time_to_process,
-                                                                            r2.time_to_process));
+                    let r2 = self.results.get(&id).unwrap().last().unwrap();
 
+                    let reservation_accepted_val = r1.accepted && r2.accepted;
+
+                    let result = ReservationResult::from_reservation_ref(r1.reservation, reservation_accepted_val, 
+                                                                        max_duration_between(r1.time_to_process,r2.time_to_process));
+
+                
                     if reservation_accepted_val == false && result.reservation.current_attempt_num < result.reservation.max_attempts{
                         let mut next_iteration_msg = result.reservation.clone();
                         next_iteration_msg.current_attempt_num = next_iteration_msg.current_attempt_num + 1;
@@ -91,12 +99,14 @@ impl Handler<ReservationResult> for ScheduleService {
                     
                     self.result_service.try_send(result);
                 } else {
-                    self.results.push(msg);
+                    let aux_id = msg.reservation.id.clone();
+                    self.results.entry(msg.reservation.id).or_insert(Vec::new()).push(msg);
                 }
             }
         }
     }
 }
+
 
 fn max_duration_between(d1 : Duration, d2: Duration) -> Duration{
     Duration::from_secs_f32(d1.as_secs_f32().max(d2.as_secs_f32()))

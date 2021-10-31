@@ -39,8 +39,9 @@ impl Handler<ReservationResult> for ResultService {
 
     fn handle(&mut self, msg: ReservationResult, _ctx: &mut Self::Context) -> Self::Result {
 
-        println!("RESULT SERVICE: recived result ({}|{}-{}|{}|{})", msg.reservation.airline, msg.reservation.origin,msg.reservation.destination,
-                                                               msg.reservation.kind, msg.accepted);
+        println!("RESULT SERVICE: received result <{}>({}|{}-{}|{}|{})", msg.reservation.id,
+                                                                msg.reservation.airline, msg.reservation.origin,msg.reservation.destination,
+                                                                msg.reservation.kind, msg.accepted);
 
         self.stats.process_result_stats(msg);
     }

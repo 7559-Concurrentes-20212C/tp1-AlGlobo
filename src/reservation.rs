@@ -21,6 +21,7 @@ impl fmt::Display for ReservationKind {
 #[derive(Message)]
 #[rtype(result = "()")]
 pub struct Reservation {
+    pub id: usize,
     pub origin: String,
     pub destination: String,
     pub airline: String,
@@ -33,6 +34,7 @@ pub struct Reservation {
 impl Clone for Reservation {
     fn clone(&self) -> Reservation {
         Reservation {
+            id: self.id, //its important for it to have the same id
             origin: self.origin.clone(),
             destination: self.destination.clone(),
             airline: self.airline.clone(),
@@ -46,11 +48,12 @@ impl Clone for Reservation {
 
 impl Reservation {
   
-    pub fn from_line(line: String) -> Reservation {
+    pub fn from_line(line: String, id : usize) -> Reservation {
 
         let params = line.split(',').collect::<Vec<&str>>();
     
         Reservation {
+            id: id,
             origin: String::from(params[0]),
             destination: String::from(params[1]),
             airline: String::from(params[2]),

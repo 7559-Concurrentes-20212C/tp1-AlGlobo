@@ -49,9 +49,10 @@ impl Program {
 
         println!("Set up finished!");
 
+        let mut i = 1;
         for line in reader.lines().flatten() {
-            let reservation = Reservation::from_line(line);
-            println!("PROGRAM: parsed reservation ({}|{}-{}|{})", reservation.airline, reservation.origin, reservation.destination, reservation.kind);
+            let reservation = Reservation::from_line(line, i);
+            println!("PROGRAM: parsed reservation <{}>({}|{}-{}|{})", i, reservation.airline, reservation.origin, reservation.destination, reservation.kind);
 
             let scheduler = match self.schedule_services.get(&*reservation.airline) {
                 None => {
@@ -61,6 +62,8 @@ impl Program {
                 Some(s) => { &*s }
             };
             scheduler.try_send(reservation);
+
+            i = i + 1;
         }
         println!("PROGRAM: finished processing reservations");
     }
