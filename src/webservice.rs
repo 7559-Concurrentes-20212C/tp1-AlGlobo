@@ -1,5 +1,5 @@
 use actix::{Actor, ActorFutureExt, Context, Handler, ResponseActFuture, WrapFuture};
-use crate::reservation::{ReservationResult, ToProcessReservation};
+use crate::messages::{ReservationResult, ToProcessReservation};
 extern crate rand;
 use std::time::Duration;
 use actix::clock::sleep;

@@ -1,5 +1,5 @@
 use std::collections::VecDeque;
-use crate::reservation::ReservationResult;
+use crate::messages::ReservationResult;
 
 pub struct StatsService {
     history: VecDeque<ReservationResult>,

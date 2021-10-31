@@ -3,25 +3,23 @@ mod schedule_service;
 mod resultservice;
 mod stats_service;
 mod webservice;
-mod reservation;
+mod messages;
 
-use actix::{System};
+use actix::{System, Actor};
 use program::{Program};
+use messages::{Run};
 
-use std::env;
+//use std::env;
 
 pub fn run() {
 
     let system = System::new();
     system.block_on(async {
-        println!("Setting up environment...");
-
         const RATE_LIMIT: usize = 4;
     
-        let mut program = Program::new(RATE_LIMIT);
-        program.run(env::args().collect());
-    
-        //program.print_results();
+        let program = Program::new(RATE_LIMIT).start();
+        //program.run(env::args().collect());
+        program.try_send(Run {});
     });
 
     system.run().unwrap();

@@ -94,3 +94,23 @@ pub struct ToProcessReservation {
     pub reservation: Reservation,
     pub sender: Recipient<ReservationResult>,
 }
+
+#[derive(Message)]
+#[rtype(result = "()")]
+pub struct ToProcessReservationResult {
+    pub result: ReservationResult,
+    pub sender: Recipient<Finished>,
+}
+
+#[derive(Message)]
+#[rtype(result = "()")]
+pub struct Finished {}
+
+
+#[derive(Message)]
+#[rtype(result = "()")]
+pub struct Stats {}
+
+#[derive(Message)]
+#[rtype(result = "()")]
+pub struct Run {}

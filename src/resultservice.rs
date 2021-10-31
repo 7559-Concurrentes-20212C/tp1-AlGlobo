@@ -1,6 +1,5 @@
-use crate::reservation;
 use actix::{Actor, Context, Handler};
-use reservation::{ReservationResult};
+use crate::messages::{Stats, ToProcessReservationResult, Finished};
 use crate::stats_service::{StatsService, MovingStats};
 
 pub struct ResultService {
@@ -33,16 +32,31 @@ impl Actor for ResultService{
     type Context = Context<Self>;
 }
 
-impl Handler<ReservationResult> for ResultService {
+impl Handler<ToProcessReservationResult> for ResultService {
 
     type Result = ();
 
-    fn handle(&mut self, msg: ReservationResult, _ctx: &mut Self::Context) -> Self::Result {
+    fn handle(&mut self, msg: ToProcessReservationResult, _ctx: &mut Self::Context) -> Self::Result {
 
-        println!("RESULT SERVICE: received result <{}>({}|{}-{}|{}|{})", msg.reservation.id,
-                                                                msg.reservation.airline, msg.reservation.origin,msg.reservation.destination,
-                                                                msg.reservation.kind, msg.accepted);
+        println!("RESULT SERVICE: received result <{}>({}|{}-{}|{}|{})", msg.result.reservation.id,
+                                                                msg.result.reservation.airline, msg.result.reservation.origin,msg.result.reservation.destination,
+                                                                msg.result.reservation.kind, msg.result.accepted);
 
-        self.stats.process_result_stats(msg);
+        let success = msg.result.accepted.clone();
+        self.stats.process_result_stats(msg.result);
+
+        if success {
+            msg.sender.try_send(Finished {});
+        }
+    }
+}
+
+impl Handler<Stats> for ResultService {
+
+    type Result = ();
+
+    fn handle(&mut self, msg: Stats, _ctx: &mut Self::Context) -> Self::Result {
+
+        let _ = self.print_results();
     }
 }
