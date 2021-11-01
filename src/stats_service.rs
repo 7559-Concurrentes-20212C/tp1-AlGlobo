@@ -53,7 +53,7 @@ impl StatsService {
 
         for val in history.iter() {
             if val.accepted {
-                *result.entry(val.airline.clone()).or_insert(0 ) += 1;
+                *result.entry(format!("{}->{}",val.origin.clone(), val.destination.clone())).or_insert(0 ) += 1;
                 success_rate += 1.0;
                 sample_size += 1;
             }

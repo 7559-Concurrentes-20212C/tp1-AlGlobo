@@ -39,7 +39,7 @@ impl ResultService {
         println!("lowest latency {}", stats.lowest_latency);
         println!("highest latency {}", stats.highest_latency);
         println!(" ");
-        println!("--- TOP RANKED AIRLINES ---");
+        println!("--- TOP RANKED ROUTES ---");
         for i in 0..stats.top_airlines.len().min(10){
             let stats = stats.top_airlines.get(i);
             match stats {
@@ -66,7 +66,7 @@ impl ResultService {
                 file.write(format!("lowest latency {}\n", stats.lowest_latency).as_ref());
                 file.write(format!("highest latency {}\n", stats.highest_latency).as_ref());
 
-                file.write(format!("--- TOP RANKED AIRLINES ---\n").as_ref());
+                file.write(format!("--- TOP RANKED ROUTES ---\n").as_ref());
                 for i in 0..stats.top_airlines.len().min(10){
                     let stats = stats.top_airlines.get(i);
                     match stats {
