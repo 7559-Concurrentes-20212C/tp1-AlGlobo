@@ -85,6 +85,6 @@ impl Worker {
             }
         });
 
-        Worker { id, thread: Some(thread), }
+        Worker { _id: id, thread: Some(thread), }
     }
 }

@@ -6,6 +6,7 @@ use crate::resultservice::ResultService;
 use std::time::Duration;
 use std::thread;
 use std::time::{Instant};
+use std::sync::mpsc::Sender;
 
 pub struct ScheduleService {
     thread_pool : Mutex<ThreadPool>,
@@ -31,7 +32,7 @@ impl ScheduleService {
     }
 
 
-    pub fn schedule_to_process(&self, reservation : Arc<Reservation>){
+    pub fn schedule_to_process(&self, reservation : Arc<Reservation>, finished_response: Arc<Mutex<Sender<bool>>>){
         let webservice = self.webservice.clone();
         let hotel_webservice = self.hotel_webservice.clone();
         let result_service = self.result_service.clone();
@@ -79,6 +80,7 @@ impl ScheduleService {
                 }
 
             }
+            finished_response.lock().expect("poisoned!").send(true);
         })
     }
 }

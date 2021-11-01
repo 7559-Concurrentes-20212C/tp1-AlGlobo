@@ -1,5 +1,5 @@
 
-use std::sync::{Arc};
+use std::sync::{Arc, mpsc, Mutex};
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::BufRead;
@@ -31,15 +31,14 @@ impl Program {
 
         let reservations: String = String::from("reservations.txt");
         let airlines: String = String::from("valid_airlines.txt");
+        let (sender, receiver) = mpsc::channel();
+        let sender = Arc::new(Mutex::new(sender));
 
         // let filename = &args[0];
         let f = File::open(reservations);
         let file = match f {
             Ok(file) => file,
-            Err(error) => {
-                println!("problem opening file: {:?}", error);
-                return;
-            },
+            Err(error) => { println!("problem opening file: {:?}", error);return;},
         };
         let reader = BufReader::new(file);
 
@@ -47,7 +46,7 @@ impl Program {
         self.load_services(airlines);
 
         println!("Set up finished!");
-
+        let mut reqs = 0;
         for line in reader.lines().flatten() {
             let reservation = Arc::new(Reservation::from_line(line));
             let scheduler = match self.web_services.get(&*reservation.airline) {
@@ -57,9 +56,14 @@ impl Program {
                 }
                 Some(s) => { s }
             };
-            scheduler.schedule_to_process(reservation);
+            reqs += 1;
+            scheduler.schedule_to_process(reservation, sender.clone());
         }
         println!("finished scheduling reservations!");
+        while reqs > 0 {
+            receiver.recv();
+            reqs -= 1;
+        }
     }
 
     pub fn print_results(&self) -> MovingStats {
