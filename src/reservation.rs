@@ -53,8 +53,7 @@ impl ReservationResult {
             time_to_process : delay,
             kind: if matches!( reservation.kind, ReservationKind::Flight)
                     {ReservationKind::Flight}
-                else
-                    {ReservationKind::Package}
+                else {ReservationKind::Package}
         }
     }
 }

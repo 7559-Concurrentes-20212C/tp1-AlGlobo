@@ -56,29 +56,29 @@ impl ResultService {
     pub fn print_results_to_file(&self) -> MovingStats {
         let stats = self.stats.calculate_stats();
 
-        let mut file = File::create("stats_results.txt");
+        let file = File::create("stats_results.txt");
         match file {
             Ok(mut file) => {
-                file.write(b"--- STATS ---\n");
-                file.write(format!("successful requests {}\n", stats.sample_size).as_ref());
-                file.write(format!("avg latency {}\n", stats.avg_latency).as_ref());
-                file.write(format!("success rate {}\n", stats.success_rate).as_ref());
-                file.write(format!("lowest latency {}\n", stats.lowest_latency).as_ref());
-                file.write(format!("highest latency {}\n", stats.highest_latency).as_ref());
+                file.write_all(format!("--- STATS ---\n
+                successful requests {}\navg latency {}\nsuccess rate {}\nlowest latency {}\
+                \nhighest latency {}\n--- TOP RANKED ROUTES ---\n",
+                                   stats.sample_size, stats.avg_latency, stats.success_rate
+                                   , stats.lowest_latency, stats.highest_latency).as_ref())
+                    .expect("could not log data");
 
-                file.write(format!("--- TOP RANKED ROUTES ---\n").as_ref());
                 for i in 0..stats.top_airlines.len().min(10){
                     let stats = stats.top_airlines.get(i);
                     match stats {
                         None => {break;}
                         Some(s) => {
-                            file.write(format!("{}. {} with {} requests\n", i+1, s.0.clone(), s.1).as_ref());
+                            file.write_all(format!("{}. {} with {} requests\n", i+1, s.0.clone(), s.1).as_ref())
+                                .expect("could not log data");
                         }
                     }
 
                 }
 
-                file.write(b"--- STATS ---\n");
+                file.write_all(b"--- STATS ---\n").expect("could not log data");
 
             }
             Err(_) => {return stats}

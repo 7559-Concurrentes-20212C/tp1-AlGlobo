@@ -57,7 +57,7 @@ impl ScheduleService {
                         let ws = webservice.clone();
 
                         let r1 = thread::spawn(move ||{
-                            return ws.process(hotel_res, hotel_now)
+                            ws.process(hotel_res, hotel_now)
                         } );
 
                         let r2 = hotel_webservice.process(reservation.clone(), now.clone());
@@ -80,7 +80,7 @@ impl ScheduleService {
                 }
 
             }
-            finished_response.lock().expect("poisoned!").send(true);
+            finished_response.lock().expect("poisoned!").send(true).expect("could not send!");
         })
     }
 }

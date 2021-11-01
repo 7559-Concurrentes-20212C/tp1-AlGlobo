@@ -1,4 +1,3 @@
-use std::sync::{Arc, mpsc, Mutex};
 
 #[cfg(test)]
 mod tests_thread_pool {

@@ -19,7 +19,7 @@ pub struct Program {
 
 impl Program {
     pub fn new(rate : usize) -> Program {
-        return Program{
+        Program{
             results_service: Arc::new(ResultService::new(rate)),
             web_services: HashMap::new(),
             hotel:  Arc::new(Webservice::new(100))
@@ -61,14 +61,14 @@ impl Program {
         }
         println!("finished scheduling reservations!");
         while reqs > 0 {
-            receiver.recv();
+            receiver.recv().expect("could not read from channel");
             reqs -= 1;
         }
     }
 
     pub fn print_results(&self) -> MovingStats {
         self.results_service.print_results_to_file();
-        return self.results_service.print_results_to_screen();
+        self.results_service.print_results_to_screen()
     }
 
     pub fn load_services(&mut self, file_name: String) {

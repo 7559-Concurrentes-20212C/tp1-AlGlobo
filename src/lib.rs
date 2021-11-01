@@ -9,7 +9,6 @@ pub mod unit_tests;
 
 use program::{Program};
 
-use std::sync::{Arc, Condvar, Mutex};
 use std::env;
 
 pub fn run() {
