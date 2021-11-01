@@ -2,6 +2,9 @@ use std::sync::{Mutex, Arc, RwLock};
 use crate::thread_pool::ThreadPool;
 use std::collections::VecDeque;
 use crate::reservation::ReservationResult;
+use std::collections::HashMap;
+use std::collections::hash_map::IntoIter;
+use std::fmt::{Display, Formatter};
 
 pub struct StatsService {
     thread_pool : Mutex<ThreadPool>,
@@ -15,6 +18,7 @@ pub struct MovingStats {
     pub avg_latency: f32,
     pub highest_latency: f32,
     pub lowest_latency: f32,
+    pub top_airlines: Vec<(String, usize)>
 }
 
 impl StatsService {
@@ -46,9 +50,11 @@ impl StatsService {
         let mut highest_latency :f32 = 0.0;
         let mut lowest_latency :f32 = f32::MAX;
         let history = self.history.read().expect("could not load history");
+        let mut result:HashMap<String, usize> = HashMap::new();
 
         for val in history.iter() {
             if val.accepted {
+                *result.entry(val.airline.clone()).or_insert(0 ) += 1;
                 success_rate += 1.0;
                 sample_size += 1;
             }
@@ -62,7 +68,9 @@ impl StatsService {
                 success_rate: 0.0,
                 avg_latency: 0.0,
                 highest_latency: 0.0,
-                lowest_latency: 0.0,};
+                lowest_latency: 0.0,
+                top_airlines: vec![]
+            };
         }
 
         return MovingStats{
@@ -70,6 +78,14 @@ impl StatsService {
             success_rate: success_rate/history.len() as f32,
             avg_latency: avg_latency/history.len() as f32,
             highest_latency,
-            lowest_latency};
+            lowest_latency,
+            top_airlines: get_airlines_ranking(result.into_iter())};
     }
 }
+
+fn get_airlines_ranking(count_iter: IntoIter<String, usize>) -> Vec<(String, usize)>{
+    let mut count_vec: Vec<(String, usize)> = count_iter.collect();
+    count_vec.sort_by(|a, b| b.1.cmp(&a.1));
+    return count_vec;
+}
+

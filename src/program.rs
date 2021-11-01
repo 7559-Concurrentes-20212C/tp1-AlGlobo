@@ -63,7 +63,8 @@ impl Program {
     }
 
     pub fn print_results(&self) -> MovingStats {
-        return self.results_service.print_results();
+        self.results_service.print_results_to_file();
+        return self.results_service.print_results_to_screen();
     }
 
     pub fn load_services(&mut self, file_name: String) {
