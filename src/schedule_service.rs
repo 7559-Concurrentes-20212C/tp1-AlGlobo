@@ -22,13 +22,13 @@ impl ScheduleService {
                 hotel_webservice: Arc<Webservice>,
                 result_service: Arc<ResultService>) -> ScheduleService {
 
-        return ScheduleService{
+        ScheduleService{
             thread_pool: Mutex::new(ThreadPool::new(rate_limit)),
             webservice,
             hotel_webservice,
             result_service,
             rate_limit
-        };
+        }
     }
 
 
