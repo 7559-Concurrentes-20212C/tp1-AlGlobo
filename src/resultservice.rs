@@ -15,10 +15,10 @@ pub struct ResultService {
 
 impl ResultService {
 
-    pub fn new(rate_limit: usize) -> ResultService {
+    pub fn new(rate_limit: u32) -> ResultService {
         ResultService {
-            thread_pool : Mutex::new(ThreadPool::new(rate_limit)),
-            stats: Arc::new(StatsService::new(rate_limit, 1000))
+            thread_pool : Mutex::new(ThreadPool::new(rate_limit as usize)),
+            stats: Arc::new(StatsService::new(rate_limit as usize, 1000))
         }
     }
 
@@ -33,7 +33,8 @@ impl ResultService {
     pub fn print_results_to_screen(&self) -> MovingStats {
         let stats = self.stats.calculate_stats();
         println!("--- STATS ---");
-        println!("successful requests {}", stats.sample_size);
+        println!("successful requests {}", stats.successful);
+        println!("failed requests {}", stats.failed);
         println!("avg latency {}", stats.avg_latency);
         println!("success rate {}", stats.success_rate);
         println!("lowest latency {}", stats.lowest_latency);
@@ -60,10 +61,10 @@ impl ResultService {
         match file {
             Ok(mut file) => {
                 file.write_all(format!("--- STATS ---\
-                \nsuccessful requests {}\navg latency {}\nsuccess rate {}\nlowest latency {}\
+                \nsuccessful requests {}\nfailed requests {}\navg latency {}\nsuccess rate {}\nlowest latency {}\
                 \nhighest latency {}\n--- TOP RANKED ROUTES ---\n",
-                                   stats.sample_size, stats.avg_latency, stats.success_rate
-                                   , stats.lowest_latency, stats.highest_latency).as_ref())
+                                       stats.successful, stats.failed, stats.avg_latency, stats.success_rate
+                                       , stats.lowest_latency, stats.highest_latency).as_ref())
                     .expect("could not log data");
 
                 for i in 0..stats.top_airlines.len().min(10){

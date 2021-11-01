@@ -18,7 +18,7 @@ pub struct Program {
 }
 
 impl Program {
-    pub fn new(rate : usize) -> Program {
+    pub fn new(rate : u32) -> Program {
         Program{
             results_service: Arc::new(ResultService::new(rate)),
             web_services: HashMap::new(),
@@ -84,10 +84,12 @@ impl Program {
 
         for line in reader.lines().flatten() {
             let params = line.split(',').collect::<Vec<&str>>();
-            let capacity = params[1].parse::<usize>().unwrap();
-            let rate = params[2].parse::<usize>().unwrap();
-            let webservice = Arc::new(Webservice::new(rate));
+            let capacity = params[1].parse::<u32>().unwrap();
+            let acceptance_rate = params[2].parse::<u32>().unwrap();
+            let retry_wait = params[3].parse::<u64>().unwrap();
+            let webservice = Arc::new(Webservice::new(acceptance_rate));
             self.web_services.insert(params[0].parse().unwrap(), ScheduleService::new(capacity,
+                                                                                      retry_wait,
                                                                                  webservice,
                                                                                  self.hotel.clone(),
                                                                                  self.results_service.clone()));

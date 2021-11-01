@@ -4,7 +4,7 @@ use crate::reservation::{Reservation, ReservationKind, ReservationResult};
 use crate::thread_pool::ThreadPool;
 use crate::resultservice::ResultService;
 use std::time::Duration;
-use std::thread;
+use std::{thread, time};
 use std::time::{Instant};
 use std::sync::mpsc::Sender;
 
@@ -13,17 +13,20 @@ pub struct ScheduleService {
     webservice: Arc<Webservice>,
     hotel_webservice: Arc<Webservice>,
     result_service: Arc<ResultService>,
-    rate_limit : usize
+    rate_limit : u32,
+    retry_wait: u64
 }
 
 impl ScheduleService {
-    pub fn new( rate_limit: usize,
+    pub fn new( rate_limit: u32,
+                retry_wait: u64,
                 webservice : Arc<Webservice>,
                 hotel_webservice: Arc<Webservice>,
                 result_service: Arc<ResultService>) -> ScheduleService {
 
         ScheduleService{
-            thread_pool: Mutex::new(ThreadPool::new(rate_limit)),
+            thread_pool: Mutex::new(ThreadPool::new(rate_limit as usize)),
+            retry_wait,
             webservice,
             hotel_webservice,
             result_service,
@@ -38,6 +41,7 @@ impl ScheduleService {
         let result_service = self.result_service.clone();
         let mut now = Arc::new(Instant::now());
         let rate_limit = self.rate_limit;
+        let retry_wait = self.retry_wait;
 
         println!("schedule request for {} with {}-{}", reservation.airline, reservation.destination, reservation.destination);
         self.thread_pool.lock().expect("lock is poisoned").execute(move || {
@@ -80,6 +84,7 @@ impl ScheduleService {
                 }
 
             }
+            thread::sleep(time::Duration::from_millis(retry_wait ));
             finished_response.lock().expect("poisoned!").send(true).expect("could not send!");
         })
     }

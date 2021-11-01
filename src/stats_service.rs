@@ -12,7 +12,8 @@ pub struct StatsService {
 
 //its called moving stats because it return stats for a moving window of max size history.capacity
 pub struct MovingStats {
-    pub sample_size: usize,
+    pub successful: u32,
+    pub failed:u32,
     pub success_rate: f32,
     pub avg_latency: f32,
     pub highest_latency: f32,
@@ -63,7 +64,8 @@ impl StatsService {
         }
         if sample_size == 0{
             return MovingStats{
-                sample_size: 0,
+                successful: 0,
+                failed: 0,
                 success_rate: 0.0,
                 avg_latency: 0.0,
                 highest_latency: 0.0,
@@ -73,7 +75,8 @@ impl StatsService {
         }
 
         MovingStats{
-            sample_size,
+            successful: sample_size,
+            failed: (history.len() as u32 - sample_size) as u32,
             success_rate: success_rate/history.len() as f32,
             avg_latency: avg_latency/history.len() as f32,
             highest_latency,

@@ -14,12 +14,12 @@ enum Decision {
 }
 
 pub struct Webservice {
-    success_rate: usize,
+    success_rate: u32,
 }
 
 impl Webservice {
 
-    pub fn new(success_chance: usize) -> Webservice {
+    pub fn new(success_chance: u32) -> Webservice {
         Webservice {
             success_rate: success_chance.min(100),
         }
@@ -44,8 +44,8 @@ impl Webservice {
 }
 
 
-fn wait(miliseconds: u64){
-    thread::sleep(time::Duration::from_millis(miliseconds));
+fn wait(milliseconds: u64){
+    thread::sleep(time::Duration::from_millis(milliseconds));
 }
 
 fn random_wait() {
