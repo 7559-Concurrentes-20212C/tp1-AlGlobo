@@ -59,8 +59,8 @@ impl ResultService {
         let file = File::create("stats_results.txt");
         match file {
             Ok(mut file) => {
-                file.write_all(format!("--- STATS ---\n
-                successful requests {}\navg latency {}\nsuccess rate {}\nlowest latency {}\
+                file.write_all(format!("--- STATS ---\
+                \nsuccessful requests {}\navg latency {}\nsuccess rate {}\nlowest latency {}\
                 \nhighest latency {}\n--- TOP RANKED ROUTES ---\n",
                                    stats.sample_size, stats.avg_latency, stats.success_rate
                                    , stats.lowest_latency, stats.highest_latency).as_ref())
