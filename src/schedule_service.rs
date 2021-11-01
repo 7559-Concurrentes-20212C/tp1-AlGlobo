@@ -1,62 +1,89 @@
-use actix::{Actor, Context, Handler, Addr, AsyncContext};
-use std::sync::{Arc};
+use crate::messages::{
+    Finished, Reservation, ReservationKind, ReservationResult, ToProcessReservation,
+    ToProcessReservationResult,
+};
+use crate::program::Program;
+use crate::resultservice::ResultService;
 use crate::webservice::Webservice;
-use crate::messages::{Finished, Reservation, ReservationKind, ReservationResult, ToProcessReservation, ToProcessReservationResult};
-use crate::resultservice::{ResultService};
-use crate::program::{Program};
-use std::time::Duration;
+use actix::{Actor, Addr, AsyncContext, Context, Handler};
 use std::collections::HashMap;
+use std::sync::Arc;
+use std::time::Duration;
+use std::fs;
+
 
 pub struct ScheduleService {
     webservice: Addr<Webservice>,
     hotel_webservice: Arc<Addr<Webservice>>,
     result_service: Arc<Addr<ResultService>>,
-    rate_limit : usize,
-    results : HashMap<usize, ReservationResult>,
+    rate_limit: usize,
+    results: HashMap<usize, ReservationResult>,
     caller: Arc<Addr<Program>>,
-    id: usize,
+    pub id: usize,
+    log_file_name: String,
 }
 
 impl ScheduleService {
-    pub fn new( rate_limit: usize,
-                success_chance: usize,
-                hotel_webservice: Arc<Addr<Webservice>>,
-                result_service: Arc<Addr<ResultService>>,
-                caller: Arc<Addr<Program>>,
-                id: usize) -> ScheduleService {
+    pub fn new(
+        rate_limit: usize,
+        success_chance: usize,
+        hotel_webservice: Arc<Addr<Webservice>>,
+        result_service: Arc<Addr<ResultService>>,
+        caller: Arc<Addr<Program>>,
+        id: usize,
+        log_file_name: String,
+    ) -> ScheduleService {
 
-        return ScheduleService{
-            webservice : Webservice::new(success_chance, id).start(),
+        let cpy_log_file_name = String::from(&log_file_name);
+        ScheduleService {
+            webservice: Webservice::new(success_chance, id, log_file_name).start(),
             hotel_webservice,
             result_service,
             rate_limit,
-            results : HashMap::new(),
-            caller: caller,
-            id: id,
-        };
+            results: HashMap::new(),
+            caller,
+            id,
+            log_file_name: cpy_log_file_name,
+        }
     }
 }
 
-
-impl Actor for ScheduleService{
+impl Actor for ScheduleService {
     type Context = Context<Self>;
 }
 
 impl Handler<Reservation> for ScheduleService {
     type Result = ();
 
-    fn handle(&mut self, msg: Reservation, _ctx: &mut Self::Context)  -> Self::Result {
+    fn handle(&mut self, msg: Reservation, _ctx: &mut Self::Context) -> Self::Result {
 
-        println!("SCHEDULER <{}>: received reservation <{}>({}|{}-{}|{})", self.id, msg.id, msg.airline, msg.origin, msg.destination,
-                                                                    msg.kind);
+        let to_log = format!("SCHEDULER <{}>: received reservation <{}>({}|{}-{}|{})",
+        self.id, msg.id, msg.airline, msg.origin, msg.destination, msg.kind
+        );
+        fs::write(String::from(&self.log_file_name), to_log).unwrap_or_else(|_| panic!("SCHEDULER <{}>: Couldn't write to log", self.id));
+        println!("SCHEDULER <{}>: received reservation <{}>({}|{}-{}|{})",
+        self.id, msg.id, msg.airline, msg.origin, msg.destination, msg.kind
+        );
 
         match msg.kind {
             ReservationKind::Flight => {
-                self.webservice.try_send(ToProcessReservation {reservation : msg.clone(), sender: _ctx.address().recipient()}).unwrap();
+                self.webservice
+                    .try_send(ToProcessReservation {
+                        reservation: msg,
+                        sender: _ctx.address().recipient(),
+                    }).unwrap_or_else(|_| panic!("SCHEDULER <{}>: Couldn't send RESULT message to WEBSERVICE", self.id));
             }
             ReservationKind::Package => {
-                self.webservice.try_send(ToProcessReservation {reservation : msg.clone(), sender: _ctx.address().recipient()}).unwrap();
-                self.hotel_webservice.try_send(ToProcessReservation {reservation : msg.clone(), sender: _ctx.address().recipient()}).unwrap();
+                self.webservice
+                    .try_send(ToProcessReservation {
+                        reservation: msg.clone(),
+                        sender: _ctx.address().recipient(),
+                    }).unwrap_or_else(|_| panic!("SCHEDULER <{}>: Couldn't send RESERVATION message to WEBSERVICE", self.id));
+                self.hotel_webservice
+                    .try_send(ToProcessReservation {
+                        reservation: msg,
+                        sender: _ctx.address().recipient(),
+                    }).unwrap_or_else(|_| panic!("SCHEDULER <{}>: Couldn't send RESULT message to HOTEL", self.id));
             }
         }
     }
@@ -65,61 +92,87 @@ impl Handler<Reservation> for ScheduleService {
 impl Handler<ReservationResult> for ScheduleService {
     type Result = ();
 
-    fn handle(&mut self, msg: ReservationResult, _ctx: &mut Self::Context)  -> Self::Result {
+    fn handle(&mut self, msg: ReservationResult, _ctx: &mut Self::Context) -> Self::Result {
 
-        println!("SCHEDULER <{}>: received result <{}>({}|{}-{}|{}|{})", self.id, msg.reservation.id,
-                                                                msg.reservation.airline, msg.reservation.origin, msg.reservation.destination,
-                                                                msg.reservation.kind, msg.accepted);
-
+        let to_log = format!("SCHEDULER <{}>: received result <{}>({}|{}-{}|{}|{})",
+        self.id,
+        msg.reservation.id,
+        msg.reservation.airline,
+        msg.reservation.origin,
+        msg.reservation.destination,
+        msg.reservation.kind,
+        msg.accepted
+        );
+        fs::write(String::from(&self.log_file_name), to_log).unwrap_or_else(|_| panic!("SCHEDULER <{}>: Couldn't write to log", self.id));
+        println!("SCHEDULER <{}>: received result <{}>({}|{}-{}|{}|{})",
+        self.id,
+        msg.reservation.id,
+        msg.reservation.airline,
+        msg.reservation.origin,
+        msg.reservation.destination,
+        msg.reservation.kind,
+        msg.accepted
+        );
 
         match msg.reservation.kind {
             ReservationKind::Flight => {
-
-                if msg.accepted == false && msg.reservation.current_attempt_num < msg.reservation.max_attempts{
+                if !msg.accepted
+                    && msg.reservation.current_attempt_num < msg.reservation.max_attempts
+                {
                     let mut next_iteration_msg = msg.reservation.clone();
-                    next_iteration_msg.current_attempt_num = next_iteration_msg.current_attempt_num + 1;
-                    _ctx.address().try_send(next_iteration_msg).unwrap();
+                    next_iteration_msg.current_attempt_num += 1;
+                    _ctx.address().try_send(next_iteration_msg).unwrap_or_else(|_| panic!("SCHEDULER <{}>: Couldn't send RESERVATION to itself for retry", self.id));
                 }
 
-                self.result_service.try_send(ToProcessReservationResult {result: msg, sender: _ctx.address().recipient()});
+                self.result_service.try_send(ToProcessReservationResult {
+                    result: msg,
+                    sender: _ctx.address().recipient(),
+                }).unwrap_or_else(|_| panic!("SCHEDULER <{}>: Couldn't send RESULT message to RESULT SERVICE", self.id));
             }
             ReservationKind::Package => {
-                if self.results.contains_key(&msg.reservation.id){
-                    let id = msg.reservation.id.clone();
+                if self.results.contains_key(&msg.reservation.id) {
+                    let id = msg.reservation.id;
                     let r1 = msg;
-                    let r2 = self.results.get(&id).unwrap();
+                    let r2 = self.results.get(&id).unwrap_or_else(|| panic!("SCHEDULER <{}>: INTERNAL ERROR", self.id));
 
                     let reservation_accepted_val = r1.accepted && r2.accepted;
 
-                    let result = ReservationResult::from_reservation_ref(r1.reservation, reservation_accepted_val, 
-                                                                        max_duration_between(r1.time_to_process,r2.time_to_process));
+                    let result = ReservationResult::from_reservation_ref(
+                        r1.reservation,
+                        reservation_accepted_val,
+                        max_duration_between(r1.time_to_process, r2.time_to_process),
+                    );
 
-                
-                    if reservation_accepted_val == false && result.reservation.current_attempt_num < result.reservation.max_attempts{
+                    if !reservation_accepted_val
+                        && result.reservation.current_attempt_num < result.reservation.max_attempts
+                    {
                         let mut next_iteration_msg = result.reservation.clone();
-                        next_iteration_msg.current_attempt_num = next_iteration_msg.current_attempt_num + 1;
-                        _ctx.address().try_send(next_iteration_msg).unwrap();
+                        next_iteration_msg.current_attempt_num += 1;
+                        _ctx.address().try_send(next_iteration_msg).unwrap_or_else(|_| panic!("SCHEDULER <{}>: Couldn't send RESERVATION to itself for retry", self.id));
                     }
-                    
-                    self.result_service.try_send(ToProcessReservationResult {result: result, sender: _ctx.address().recipient()});
+
+                    self.result_service.try_send(ToProcessReservationResult {
+                        result,
+                        sender: _ctx.address().recipient(),
+                    }).unwrap_or_else(|_| panic!("SCHEDULER <{}>: Couldn't send RESULT message to RESULT SERVICE", self.id));
+        
                     self.results.remove_entry(&id);
                 } else {
-                    let aux_id = msg.reservation.id.clone();
                     self.results.entry(msg.reservation.id).or_insert(msg);
                 }
             }
         }
-
     }
 }
 
 impl Handler<Finished> for ScheduleService {
     type Result = ();
-    fn handle(&mut self, msg: Finished, _ctx: &mut Self::Context)  -> Self::Result {
-        self.caller.try_send(Finished {});
+    fn handle(&mut self, _msg: Finished, _ctx: &mut Self::Context) -> Self::Result {
+        self.caller.try_send(Finished {}).unwrap_or_else(|_| panic!("SCHEDULER <{}>: Couldn't
+        send FINISH message to PROGRAM", self.id));
     }
 }
 
-fn max_duration_between(d1 : Duration, d2: Duration) -> Duration{
+fn max_duration_between(d1: Duration, d2: Duration) -> Duration {
     Duration::from_secs_f32(d1.as_secs_f32().max(d2.as_secs_f32()))
 }

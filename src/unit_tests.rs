@@ -19,7 +19,7 @@ mod tests_thread_pool {
         let t = ThreadPool::new(1);
 
         t.execute(move || {
-            sd.lock().expect("could not lock").send(1 + 1).unwrap();
+            sd.lock().expect("could not lock").send(1 + 1);
         });
 
         assert_eq!(recv.recv().expect("failed to receive"), 2);

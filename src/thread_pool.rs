@@ -53,8 +53,8 @@ impl Drop for ThreadPool {
         for worker in &mut self.workers {
             //println!("Shutting down worker {}", worker.id);
 
-            if let Some(thread) = worker.thread.take() { // TODO take seria como un unwrap chequear
-                thread.join().unwrap(); // TODO validar unwrap
+            if let Some(thread) = worker.thread.take() {
+                thread.join();
             }
         }
     }
@@ -69,7 +69,7 @@ impl Worker {
     fn new(id: usize, receiver: Arc<Mutex<mpsc::Receiver<Message>>>) -> Worker {
         let thread = thread::spawn(move || loop {
             
-            let message = receiver.lock().unwrap().recv().unwrap(); // TODO validar unwrap
+            let message = receiver.lock().recv();
 
             match message {
                 Message::NewJob(job) => {

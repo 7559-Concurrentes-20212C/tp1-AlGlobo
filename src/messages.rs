@@ -1,7 +1,7 @@
-use std::time::{Duration, Instant};
 use actix::prelude::*;
-use actix::{Recipient};
+use actix::Recipient;
 use std::fmt;
+use std::time::{Duration, Instant};
 
 #[derive(Clone)]
 pub enum ReservationKind {
@@ -27,8 +27,8 @@ pub struct Reservation {
     pub airline: String,
     pub kind: ReservationKind,
     pub alive_timer: Instant,
-    pub max_attempts : u32,
-    pub current_attempt_num : u32,
+    pub max_attempts: u32,
+    pub current_attempt_num: u32,
 }
 
 impl Clone for Reservation {
@@ -39,7 +39,7 @@ impl Clone for Reservation {
             destination: self.destination.clone(),
             airline: self.airline.clone(),
             kind: self.kind.clone(),
-            alive_timer: self.alive_timer.clone(),
+            alive_timer: self.alive_timer,
             max_attempts: self.max_attempts,
             current_attempt_num: self.current_attempt_num,
         }
@@ -47,13 +47,11 @@ impl Clone for Reservation {
 }
 
 impl Reservation {
-  
-    pub fn from_line(line: String, id : usize) -> Reservation {
-
+    pub fn from_line(line: String, id: usize) -> Reservation {
         let params = line.split(',').collect::<Vec<&str>>();
-    
+
         Reservation {
-            id: id,
+            id,
             origin: String::from(params[0]),
             destination: String::from(params[1]),
             airline: String::from(params[2]),
@@ -63,10 +61,9 @@ impl Reservation {
             },
             alive_timer: Instant::now(),
             max_attempts: 10,
-            current_attempt_num : 1,
+            current_attempt_num: 1,
         }
     }
-
 }
 
 #[derive(Message)]
@@ -78,12 +75,15 @@ pub struct ReservationResult {
 }
 
 impl ReservationResult {
-
-    pub fn from_reservation_ref(reservation : Reservation, accepted : bool, delay : Duration) -> ReservationResult {
+    pub fn from_reservation_ref(
+        reservation: Reservation,
+        accepted: bool,
+        delay: Duration,
+    ) -> ReservationResult {
         ReservationResult {
             reservation,
             accepted,
-            time_to_process : delay,
+            time_to_process: delay,
         }
     }
 }
@@ -105,7 +105,6 @@ pub struct ToProcessReservationResult {
 #[derive(Message)]
 #[rtype(result = "()")]
 pub struct Finished {}
-
 
 #[derive(Message)]
 #[rtype(result = "()")]
