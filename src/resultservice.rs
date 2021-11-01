@@ -5,6 +5,8 @@ use std::sync::{Mutex, Arc};
 use reservation::{ReservationResult};
 use thread_pool::{ThreadPool};
 use crate::stats_service::{StatsService, MovingStats};
+use std::fs::File;
+use std::io::{Error, Write};
 
 pub struct ResultService {
     thread_pool : Mutex<ThreadPool>,
@@ -28,15 +30,59 @@ impl ResultService {
 
     }
 
-    pub fn print_results(&self) -> MovingStats {
+    pub fn print_results_to_screen(&self) -> MovingStats {
         let stats = self.stats.calculate_stats();
         println!("--- STATS ---");
-        println!("sample size {}", stats.sample_size);
+        println!("successful requests {}", stats.sample_size);
         println!("avg latency {}", stats.avg_latency);
         println!("success rate {}", stats.success_rate);
         println!("lowest latency {}", stats.lowest_latency);
         println!("highest latency {}", stats.highest_latency);
+        println!(" ");
+        println!("--- TOP RANKED AIRLINES ---");
+        for i in 0..stats.top_airlines.len().min(10){
+            let stats = stats.top_airlines.get(i);
+            match stats {
+                None => {break;}
+                Some(s) => {println!("{}. {} with {} requests", i, s.0.clone(), s.1)}
+            }
+
+        }
+
         println!("--- STATS ---");
+        return stats;
+    }
+
+    pub fn print_results_to_file(&self) -> MovingStats {
+        let stats = self.stats.calculate_stats();
+
+        let mut file = File::create("stats_results.txt");
+        match file {
+            Ok(mut file) => {
+                file.write(b"--- STATS ---\n");
+                file.write(format!("successful requests {}\n", stats.sample_size).as_ref());
+                file.write(format!("avg latency {}\n", stats.avg_latency).as_ref());
+                file.write(format!("success rate {}\n", stats.success_rate).as_ref());
+                file.write(format!("lowest latency {}\n", stats.lowest_latency).as_ref());
+                file.write(format!("highest latency {}\n", stats.highest_latency).as_ref());
+
+                file.write(format!("--- TOP RANKED AIRLINES ---\n").as_ref());
+                for i in 0..stats.top_airlines.len().min(10){
+                    let stats = stats.top_airlines.get(i);
+                    match stats {
+                        None => {break;}
+                        Some(s) => {
+                            file.write(format!("{}. {} with {} requests\n", i+1, s.0.clone(), s.1).as_ref());
+                        }
+                    }
+
+                }
+
+                file.write(b"--- STATS ---\n");
+
+            }
+            Err(_) => {return stats}
+        }
         return stats;
     }
 }
