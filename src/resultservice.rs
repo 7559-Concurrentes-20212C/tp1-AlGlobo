@@ -6,7 +6,7 @@ use reservation::{ReservationResult};
 use thread_pool::{ThreadPool};
 use crate::stats_service::{StatsService, MovingStats};
 use std::fs::File;
-use std::io::{Error, Write};
+use std::io::{Write};
 
 pub struct ResultService {
     thread_pool : Mutex<ThreadPool>,
@@ -50,7 +50,7 @@ impl ResultService {
         }
 
         println!("--- STATS ---");
-        return stats;
+        stats
     }
 
     pub fn print_results_to_file(&self) -> MovingStats {
@@ -83,6 +83,6 @@ impl ResultService {
             }
             Err(_) => {return stats}
         }
-        return stats;
+        stats
     }
 }

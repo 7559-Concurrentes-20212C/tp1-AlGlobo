@@ -2,6 +2,7 @@ use std::sync::mpsc;
 use std::sync::Arc;
 use std::sync::Mutex;
 use std::thread;
+use std::sync::mpsc::RecvError;
 
 pub struct ThreadPool {
     workers: Vec<Worker>,
@@ -54,14 +55,14 @@ impl Drop for ThreadPool {
             //println!("Shutting down worker {}", worker.id);
 
             if let Some(thread) = worker.thread.take() { // TODO take seria como un unwrap chequear
-                thread.join().unwrap(); // TODO validar unwrap
+                thread.join().expect("there was an error joining the workings");
             }
         }
     }
 }
 
 struct Worker {
-    id: usize,
+    _id: usize,
     thread: Option<thread::JoinHandle<()>>,
 }
 
@@ -69,7 +70,10 @@ impl Worker {
     fn new(id: usize, receiver: Arc<Mutex<mpsc::Receiver<Message>>>) -> Worker {
         let thread = thread::spawn(move || loop {
             
-            let message = receiver.lock().unwrap().recv().unwrap(); // TODO validar unwrap
+            let message = match receiver.lock().expect("poisoned lock").recv() {
+                Ok(msg) => {msg}
+                Err(_) => {return}
+            };
 
             match message {
                 Message::NewJob(job) => {

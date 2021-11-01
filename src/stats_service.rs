@@ -4,7 +4,6 @@ use std::collections::VecDeque;
 use crate::reservation::ReservationResult;
 use std::collections::HashMap;
 use std::collections::hash_map::IntoIter;
-use std::fmt::{Display, Formatter};
 
 pub struct StatsService {
     thread_pool : Mutex<ThreadPool>,
@@ -73,19 +72,19 @@ impl StatsService {
             };
         }
 
-        return MovingStats{
+        MovingStats{
             sample_size,
             success_rate: success_rate/history.len() as f32,
             avg_latency: avg_latency/history.len() as f32,
             highest_latency,
             lowest_latency,
-            top_airlines: get_airlines_ranking(result.into_iter())};
+            top_airlines: get_airlines_ranking(result.into_iter())}
     }
 }
 
 fn get_airlines_ranking(count_iter: IntoIter<String, usize>) -> Vec<(String, usize)>{
     let mut count_vec: Vec<(String, usize)> = count_iter.collect();
     count_vec.sort_by(|a, b| b.1.cmp(&a.1));
-    return count_vec;
+    count_vec
 }
 

@@ -30,17 +30,16 @@ impl Webservice {
         if self.success_rate > 0 && (i % 100000) <= (self.success_rate * 1000)  as i32 {
             return Decision::Accepted;
         }
-        return Decision::Rejected;
+        Decision::Rejected
     }
 
     pub fn process(&self, req: Arc<Reservation>, time_requested : Arc<Instant>) -> ReservationResult {
         let decision = self.decide();
 
         random_wait();
-        let result = ReservationResult::from_reservation_ref(req,
+        ReservationResult::from_reservation_ref(req,
                                             matches!(decision , Decision::Accepted),
-                                            time_requested.elapsed());
-        return result;
+                                            time_requested.elapsed())
     }
 }
 
