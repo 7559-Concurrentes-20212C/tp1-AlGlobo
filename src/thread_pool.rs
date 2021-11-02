@@ -52,7 +52,6 @@ impl Drop for ThreadPool {
             //println!("Shutting down worker {}", worker.id);
 
             if let Some(thread) = worker.thread.take() {
-                // TODO take seria como un unwrap chequear
                 thread
                     .join()
                     .expect("there was an error joining the workings");

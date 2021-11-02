@@ -1,12 +1,8 @@
-use std::sync::Arc;
-use std::time::Duration;
-
-pub enum ReservationKind {
-    Flight,
-    Package,
-}
+use crate::reservation_kind::ReservationKind;
+use std::fmt;
 
 pub struct Reservation {
+    pub id: usize,
     pub origin: String,
     pub destination: String,
     pub airline: String,
@@ -14,10 +10,11 @@ pub struct Reservation {
 }
 
 impl Reservation {
-    pub fn from_line(line: String) -> Reservation {
+    pub fn from_line(line: String, id: usize) -> Reservation {
         let params = line.split(',').collect::<Vec<&str>>();
 
         Reservation {
+            id,
             origin: String::from(params[0]),
             destination: String::from(params[1]),
             airline: String::from(params[2]),
@@ -29,32 +26,24 @@ impl Reservation {
     }
 }
 
-pub struct ReservationResult {
-    pub origin: String,
-    pub destination: String,
-    pub airline: String,
-    pub kind: ReservationKind,
-    pub accepted: bool,
-    pub time_to_process: Duration,
+impl Clone for Reservation {
+    fn clone(&self) -> Reservation {
+        Reservation {
+            id: self.id, //its important for it to have the same id
+            origin: self.origin.clone(),
+            destination: self.destination.clone(),
+            airline: self.airline.clone(),
+            kind: self.kind.clone(),
+        }
+    }
 }
 
-impl ReservationResult {
-    pub fn from_reservation_ref(
-        reservation: Arc<Reservation>,
-        accepted: bool,
-        delay: Duration,
-    ) -> ReservationResult {
-        ReservationResult {
-            origin: reservation.origin.clone(),
-            destination: reservation.destination.clone(),
-            airline: reservation.airline.clone(),
-            accepted,
-            time_to_process: delay,
-            kind: if matches!(reservation.kind, ReservationKind::Flight) {
-                ReservationKind::Flight
-            } else {
-                ReservationKind::Package
-            },
-        }
+impl fmt::Display for Reservation {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "<{}>({}|{}-{}|{})",
+            self.id, self.airline, self.origin, self.destination, self.kind
+        )
     }
 }

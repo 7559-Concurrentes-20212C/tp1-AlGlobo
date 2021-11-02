@@ -1,5 +1,5 @@
 use crate::moving_stats::MovingStats;
-use crate::reservation::ReservationResult;
+use crate::reservation_result::ReservationResult;
 use crate::thread_pool::ThreadPool;
 use std::collections::hash_map::IntoIter;
 use std::collections::HashMap;
@@ -49,8 +49,8 @@ impl StatsService {
                 *result
                     .entry(format!(
                         "{}->{}",
-                        val.origin.clone(),
-                        val.destination.clone()
+                        val.reservation.origin.clone(),
+                        val.reservation.destination.clone()
                     ))
                     .or_insert(0) += 1;
                 success_rate += 1.0;

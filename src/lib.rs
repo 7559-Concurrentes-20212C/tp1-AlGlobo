@@ -1,3 +1,4 @@
+pub mod logger;
 pub mod program;
 pub mod reservation;
 pub mod resultservice;
@@ -13,15 +14,18 @@ pub mod message;
 pub mod moving_stats;
 pub mod worker;
 
+pub mod ranked_route_entry;
+pub mod reservation_kind;
+pub mod reservation_result;
+
 use program::Program;
 
 use std::env;
 
 pub fn run() {
     println!("Setting up environment...");
-
-    const RATE_LIMIT: u32 = 4;
-    let mut program = Program::new(RATE_LIMIT);
+    let log_file_name: String = String::from("stats_results.txt");
+    let mut program = Program::new(log_file_name);
     program.run(env::args().collect());
     program.print_results();
 }
