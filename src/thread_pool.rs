@@ -1,18 +1,12 @@
+use crate::message::Message;
+use crate::worker::Worker;
 use std::sync::mpsc;
 use std::sync::Arc;
 use std::sync::Mutex;
-use std::thread;
 
 pub struct ThreadPool {
     workers: Vec<Worker>,
     pub sender: mpsc::Sender<Message>,
-}
-
-type Job = Box<dyn FnOnce() + Send + 'static>;
-
-pub enum Message {
-    NewJob(Job),
-    Terminate,
 }
 
 impl ThreadPool {
@@ -63,36 +57,6 @@ impl Drop for ThreadPool {
                     .join()
                     .expect("there was an error joining the workings");
             }
-        }
-    }
-}
-
-struct Worker {
-    _id: usize,
-    thread: Option<thread::JoinHandle<()>>,
-}
-
-impl Worker {
-    fn new(id: usize, receiver: Arc<Mutex<mpsc::Receiver<Message>>>) -> Worker {
-        let thread = thread::spawn(move || loop {
-            let message = match receiver.lock().expect("poisoned lock").recv() {
-                Ok(msg) => msg,
-                Err(_) => return,
-            };
-
-            match message {
-                Message::NewJob(job) => {
-                    job();
-                }
-                Message::Terminate => {
-                    break;
-                }
-            }
-        });
-
-        Worker {
-            _id: id,
-            thread: Some(thread),
         }
     }
 }

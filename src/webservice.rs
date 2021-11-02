@@ -1,17 +1,13 @@
 use crate::reservation;
 extern crate rand;
 
+use crate::decision::Decision;
 use crate::reservation::ReservationResult;
 use reservation::Reservation;
 use std::sync::Arc;
 use std::thread;
 use std::time;
 use std::time::Instant;
-
-enum Decision {
-    Accepted,
-    Rejected,
-}
 
 pub struct Webservice {
     success_rate: u32,

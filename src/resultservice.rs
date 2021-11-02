@@ -1,7 +1,8 @@
 use crate::reservation;
 use crate::thread_pool;
 
-use crate::stats_service::{MovingStats, StatsService};
+use crate::moving_stats::MovingStats;
+use crate::stats_service::StatsService;
 use reservation::ReservationResult;
 use std::fs::File;
 use std::io::Write;

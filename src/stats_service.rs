@@ -1,3 +1,4 @@
+use crate::moving_stats::MovingStats;
 use crate::reservation::ReservationResult;
 use crate::thread_pool::ThreadPool;
 use std::collections::hash_map::IntoIter;
@@ -8,17 +9,6 @@ use std::sync::{Arc, Mutex, RwLock};
 pub struct StatsService {
     thread_pool: Mutex<ThreadPool>,
     history: Arc<RwLock<VecDeque<ReservationResult>>>,
-}
-
-//its called moving stats because it return stats for a moving window of max size history.capacity
-pub struct MovingStats {
-    pub successful: u32,
-    pub failed: u32,
-    pub success_rate: f32,
-    pub avg_latency: f32,
-    pub highest_latency: f32,
-    pub lowest_latency: f32,
-    pub top_routes: Vec<(String, usize)>,
 }
 
 impl StatsService {
@@ -89,12 +79,12 @@ impl StatsService {
             avg_latency: avg_latency / history.len() as f32,
             highest_latency,
             lowest_latency,
-            top_routes: get_airlines_ranking(result.into_iter()),
+            top_routes: get_ranking(result.into_iter()),
         }
     }
 }
 
-fn get_airlines_ranking(count_iter: IntoIter<String, usize>) -> Vec<(String, usize)> {
+fn get_ranking(count_iter: IntoIter<String, usize>) -> Vec<(String, usize)> {
     let mut count_vec: Vec<(String, usize)> = count_iter.collect();
     count_vec.sort_by(|a, b| b.1.cmp(&a.1));
     count_vec

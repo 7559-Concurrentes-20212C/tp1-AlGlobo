@@ -1,7 +1,7 @@
+use crate::moving_stats::MovingStats;
 use crate::reservation::Reservation;
 use crate::resultservice::ResultService;
 use crate::schedule_service::ScheduleService;
-use crate::stats_service::MovingStats;
 use crate::webservice::Webservice;
 use std::collections::HashMap;
 use std::fs::File;

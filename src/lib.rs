@@ -7,6 +7,12 @@ pub mod thread_pool;
 pub mod unit_tests;
 pub mod webservice;
 
+pub mod decision;
+pub mod job;
+pub mod message;
+pub mod moving_stats;
+pub mod worker;
+
 use program::Program;
 
 use std::env;
