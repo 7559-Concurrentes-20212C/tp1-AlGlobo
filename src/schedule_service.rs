@@ -18,7 +18,6 @@ pub struct ScheduleService {
     hotel_webservice: Arc<Addr<Webservice>>,
     result_service: Arc<Addr<ResultService>>,
     logger: Arc<Logger>,
-    rate_limit: usize,
     results: HashMap<usize, ReservationResult>,
     caller: Arc<Addr<Program>>,
     pub id: usize,
@@ -26,8 +25,7 @@ pub struct ScheduleService {
 
 impl ScheduleService {
     pub fn new(
-        rate_limit: usize,
-        success_chance: usize,
+        webservice: Addr<Webservice>,
         hotel_webservice: Arc<Addr<Webservice>>,
         result_service: Arc<Addr<ResultService>>,
         logger: Arc<Logger>,
@@ -35,11 +33,10 @@ impl ScheduleService {
         id: usize,
     ) -> ScheduleService {
         ScheduleService {
-            webservice: Webservice::new(success_chance, id, logger.clone()).start(),
+            webservice,
             hotel_webservice,
             result_service,
             logger,
-            rate_limit,
             results: HashMap::new(),
             caller,
             id,

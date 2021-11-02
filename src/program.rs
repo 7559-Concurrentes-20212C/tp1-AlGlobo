@@ -16,20 +16,18 @@ pub struct Program {
     schedule_services: HashMap<String, Addr<ScheduleService>>,
     hotel: Arc<Addr<Webservice>>,
     logger: Arc<Logger>,
-    rate: usize,
     amount_to_process: usize,
     processed: usize,
 }
 
 impl Program {
-    pub fn new(rate: usize, log_file_name: String) -> Program {
+    pub fn new(log_file_name: String) -> Program {
         let logger = Arc::new(Logger::new(log_file_name));
         Program {
             results_service: Arc::new(ResultService::new(logger.clone()).start()),
             schedule_services: HashMap::new(),
-            hotel: Arc::new(Webservice::new(100, 0, logger.clone()).start()),
+            hotel: Arc::new(Webservice::new(100, 0, 100, 0, logger.clone()).start()),
             logger,
-            rate,
             amount_to_process: 0,
             processed: 0,
         }
@@ -46,24 +44,26 @@ impl Program {
         };
         let reader = BufReader::new(file);
 
-        let mut i = 1;
+        let mut id = 1;
         for line in reader.lines().flatten() {
             let params = line.split(',').collect::<Vec<&str>>();
             let capacity = params[1]
                 .parse::<usize>()
-                .unwrap_or_else(|_| panic!("PROGRAM: INTERNAL ERROR"));
+                .unwrap_or_else(|_| panic!("PROGRAM: INTERNAL ERROR WHILE PARSING FILE"));
             let rate = params[2]
                 .parse::<usize>()
-                .unwrap_or_else(|_| panic!("PROGRAM: INTERNAL ERROR"));
+                .unwrap_or_else(|_| panic!("PROGRAM: INTERNAL ERROR WHILE PARSING FILE"));
+            let wait_time = params[3]
+                .parse::<usize>()
+                .unwrap_or_else(|_| panic!("PROGRAM: INTERNAL ERROR WHILE PARSING FILE"));
 
             let schedule_service_addr = ScheduleService::new(
-                capacity,
-                rate,
+                Webservice::new(capacity, wait_time, rate, id, self.logger.clone()).start(),
                 self.hotel.clone(),
                 self.results_service.clone(),
                 self.logger.clone(),
                 caller_addr.clone(),
-                i,
+                id,
             )
             .start();
 
@@ -74,7 +74,7 @@ impl Program {
                 schedule_service_addr,
             );
 
-            i += 1;
+            id += 1;
         }
     }
 

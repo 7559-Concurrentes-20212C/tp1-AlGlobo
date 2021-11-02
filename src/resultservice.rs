@@ -1,5 +1,5 @@
 use crate::logger::Logger;
-use crate::messages::{Finished, Stats, ToProcessReservationResult, RankedRoutEntry};
+use crate::messages::{Finished, RankedRoutEntry, Stats, ToProcessReservationResult};
 use crate::stats_service::StatsService;
 use actix::{Actor, Context, Handler};
 use std::fmt;
@@ -54,18 +54,30 @@ impl ResultService {
             .log("".to_string(), "--- STATS ---".to_string(), "".to_string());
         self.logger
             .log("".to_string(), "".to_string(), "".to_string());
-        self.logger
-            .log("".to_string(), "--- TOP RANKED ROUTES ---".to_string(), "".to_string());
-        for i in 0..stats.top_airlines.len().min(10){
-            let stats = stats.top_airlines.get(i);
+        self.logger.log(
+            "".to_string(),
+            "--- TOP RANKED ROUTES ---".to_string(),
+            "".to_string(),
+        );
+        for i in 0..stats.top_routes.len().min(10) {
+            let stats = stats.top_routes.get(i);
             match stats {
-                None => {break;}
+                None => {
+                    break;
+                }
 
                 Some(s) => {
                     self.logger.log(
                         "".to_string(),
                         "".to_string(),
-                        format!("{}", RankedRoutEntry {rank: i, route: s.0.clone(), count: s.1}),
+                        format!(
+                            "{}",
+                            RankedRoutEntry {
+                                rank: i,
+                                route: s.0.clone(),
+                                count: s.1
+                            }
+                        ),
                     );
                 }
             }

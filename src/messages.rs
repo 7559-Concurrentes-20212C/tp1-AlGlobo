@@ -26,7 +26,11 @@ pub struct RankedRoutEntry {
 
 impl fmt::Display for RankedRoutEntry {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}. {} with {} requests", self.rank, self.route, self.count)
+        write!(
+            f,
+            "{}. {} with {} requests",
+            self.rank, self.route, self.count
+        )
     }
 }
 
