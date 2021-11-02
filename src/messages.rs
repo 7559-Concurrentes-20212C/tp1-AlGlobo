@@ -66,6 +66,16 @@ impl Reservation {
     }
 }
 
+impl fmt::Display for Reservation {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "<{}>({}|{}-{}|{})",
+            self.id, self.airline, self.origin, self.destination, self.kind
+        )
+    }
+}
+
 #[derive(Message)]
 #[rtype(result = "()")]
 pub struct ReservationResult {
@@ -85,6 +95,21 @@ impl ReservationResult {
             accepted,
             time_to_process: delay,
         }
+    }
+}
+
+impl fmt::Display for ReservationResult {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "<{}>({}|{}-{}|{}|{})",
+            self.reservation.id,
+            self.reservation.airline,
+            self.reservation.origin,
+            self.reservation.destination,
+            self.reservation.kind,
+            self.accepted
+        )
     }
 }
 

@@ -89,8 +89,7 @@ fn test_run_program_for_bottleneck() {
     //creates hotel
     let hotel = Arc::new(Webservice::new(100));
     //creates all web services
-    let web_services =
-        load_services(&results_service, hotel, vec!["american,1,1".to_string()]);
+    let web_services = load_services(&results_service, hotel, vec!["american,1,1".to_string()]);
 
     for line in test_args {
         let reservation = Arc::new(Reservation::from_line(line));
@@ -117,8 +116,7 @@ fn test_run_program_incorrect_airlines() {
     //creates hotel
     let hotel = Arc::new(Webservice::new(100));
     //creates all web services
-    let web_services =
-        load_services(&results_service, hotel, vec!["american,1,100".to_string()]);
+    let web_services = load_services(&results_service, hotel, vec!["american,1,100".to_string()]);
 
     for line in test_args {
         let reservation = Arc::new(Reservation::from_line(line));

@@ -1,11 +1,11 @@
 use crate::messages::{ReservationResult, ToProcessReservation};
 use actix::{Actor, ActorFutureExt, Context, Handler, ResponseActFuture, WrapFuture};
 extern crate rand;
+use crate::logger::Logger;
 use actix::clock::sleep;
 use std::fmt;
+use std::sync::Arc;
 use std::time::Duration;
-use std::fs;
-
 
 enum Decision {
     Accepted,
@@ -24,15 +24,15 @@ impl fmt::Display for Decision {
 pub struct Webservice {
     success_rate: usize,
     id: usize,
-    log_file_name: String,
+    logger: Arc<Logger>,
 }
 
 impl Webservice {
-    pub fn new(success_chance: usize, id: usize, log_file_name: String) -> Webservice {
+    pub fn new(success_chance: usize, id: usize, logger: Arc<Logger>) -> Webservice {
         Webservice {
             success_rate: success_chance.min(100),
             id,
-            log_file_name,
+            logger,
         }
     }
 
@@ -55,26 +55,11 @@ impl Handler<ToProcessReservation> for Webservice {
     fn handle(&mut self, msg: ToProcessReservation, _ctx: &mut Self::Context) -> Self::Result {
         let decision = self.decide();
 
-        let to_log = format!(
-            "WEBSERVICE <{}>: received reservation <{}>({}|{}-{}|{}|{})",
-            self.id,
-            msg.reservation.id,
-            msg.reservation.airline,
-            msg.reservation.origin,
-            msg.reservation.destination,
-            msg.reservation.kind,
-            decision
-        );
-        fs::write(String::from(&self.log_file_name), to_log).unwrap_or_else(|_| panic!("WEBSERVICE <{}>: Couldn't write to log", self.id));
-        println!(
-            "WEBSERVICE <{}>: received reservation <{}>({}|{}-{}|{}|{})",
-            self.id,
-            msg.reservation.id,
-            msg.reservation.airline,
-            msg.reservation.origin,
-            msg.reservation.destination,
-            msg.reservation.kind,
-            decision
+        self.logger.log_extra_arg(
+            format!("{}", self),
+            "received reservation".to_string(),
+            format!("{}", msg.reservation),
+            format!("{}", decision),
         );
 
         let i: i32 = rand::random();
@@ -94,5 +79,11 @@ impl Handler<ToProcessReservation> for Webservice {
                     msg.sender.try_send(result).expect(&error_msg);
                 }),
         )
+    }
+}
+
+impl fmt::Display for Webservice {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "WEBSERVICE <{}>", self.id)
     }
 }

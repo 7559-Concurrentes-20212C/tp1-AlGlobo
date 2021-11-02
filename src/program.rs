@@ -1,37 +1,37 @@
+use crate::logger::Logger;
 use crate::messages::{Finished, Reservation, Run, Stats};
 use crate::resultservice::ResultService;
 use crate::schedule_service::ScheduleService;
 use crate::webservice::Webservice;
 use actix::{Actor, Addr, AsyncContext, Context, Handler};
 use std::collections::HashMap;
+use std::fmt;
 use std::fs::File;
 use std::io::BufRead;
 use std::io::BufReader;
 use std::sync::Arc;
-use std::fs;
 
 pub struct Program {
     results_service: Arc<Addr<ResultService>>,
     schedule_services: HashMap<String, Addr<ScheduleService>>,
     hotel: Arc<Addr<Webservice>>,
+    logger: Arc<Logger>,
     rate: usize,
     amount_to_process: usize,
     processed: usize,
-    log_file_name: String,
 }
 
 impl Program {
     pub fn new(rate: usize, log_file_name: String) -> Program {
-        let cpy1_log_file_name = String::from(&log_file_name);
-        let cpy2_log_file_name = String::from(&log_file_name);
+        let logger = Arc::new(Logger::new(log_file_name));
         Program {
-            results_service: Arc::new(ResultService::new(cpy1_log_file_name).start()),
+            results_service: Arc::new(ResultService::new(logger.clone()).start()),
             schedule_services: HashMap::new(),
-            hotel: Arc::new(Webservice::new(100, 0, cpy2_log_file_name).start()),
+            hotel: Arc::new(Webservice::new(100, 0, logger.clone()).start()),
+            logger,
             rate,
             amount_to_process: 0,
             processed: 0,
-            log_file_name,
         }
     }
 
@@ -49,23 +49,30 @@ impl Program {
         let mut i = 1;
         for line in reader.lines().flatten() {
             let params = line.split(',').collect::<Vec<&str>>();
-            let capacity = params[1].parse::<usize>().unwrap_or_else(|_| panic!("PROGRAM: INTERNAL ERROR"));
-            let rate = params[2].parse::<usize>().unwrap_or_else(|_| panic!("PROGRAM: INTERNAL ERROR"));
+            let capacity = params[1]
+                .parse::<usize>()
+                .unwrap_or_else(|_| panic!("PROGRAM: INTERNAL ERROR"));
+            let rate = params[2]
+                .parse::<usize>()
+                .unwrap_or_else(|_| panic!("PROGRAM: INTERNAL ERROR"));
 
             let schedule_service_addr = ScheduleService::new(
                 capacity,
                 rate,
                 self.hotel.clone(),
                 self.results_service.clone(),
+                self.logger.clone(),
                 caller_addr.clone(),
                 i,
-                String::from(&self.log_file_name),
             )
             .start();
 
-            self.schedule_services
-                .insert(params[0].parse().unwrap_or_else(|_| panic!("PROGRAM: INTERNAL ERROR")),
-                schedule_service_addr);
+            self.schedule_services.insert(
+                params[0]
+                    .parse()
+                    .unwrap_or_else(|_| panic!("PROGRAM: INTERNAL ERROR")),
+                schedule_service_addr,
+            );
 
             i += 1;
         }
@@ -76,7 +83,9 @@ impl Program {
             "PROGRAM: finished processing all {} reservations",
             self.amount_to_process
         );
-        self.results_service.try_send(Stats {}).unwrap_or_else(|_| panic!("PROGRAM: Couldn't send STATS message to RESULT SERVICE"));
+        self.results_service
+            .try_send(Stats {})
+            .unwrap_or_else(|_| panic!("PROGRAM: Couldn't send STATS message to RESULT SERVICE"));
     }
 }
 
@@ -118,20 +127,10 @@ impl Handler<Run> for Program {
         for line in lines {
             let reservation = Reservation::from_line(line, i);
 
-            let to_log = format!("PROGRAM: parsed reservation <{}>({}|{}-{}|{})",
-            i,
-            reservation.airline,
-            reservation.origin,
-            reservation.destination,
-            reservation.kind
-            );
-            fs::write(String::from(&self.log_file_name), to_log).unwrap_or_else(|_| panic!("PROGRAM: Couldn't write to log"));
-            println!("PROGRAM: parsed reservation <{}>({}|{}-{}|{})",
-            i,
-            reservation.airline,
-            reservation.origin,
-            reservation.destination,
-            reservation.kind
+            self.logger.log(
+                format!("{}", self),
+                "parsed reservation".to_string(),
+                format!("{}", reservation),
             );
 
             let scheduler = match self.schedule_services.get(&*reservation.airline) {
@@ -141,7 +140,9 @@ impl Handler<Run> for Program {
                 }
                 Some(s) => &*s,
             };
-            scheduler.try_send(reservation).unwrap_or_else(|_| panic!("PROGRAM: Couldn't send RESERVATION message to SCHEDULER"));
+            scheduler.try_send(reservation).unwrap_or_else(|_| {
+                panic!("PROGRAM: Couldn't send RESERVATION message to SCHEDULER")
+            });
             i += 1;
         }
     }
@@ -156,5 +157,11 @@ impl Handler<Finished> for Program {
         if self.processed == self.amount_to_process {
             self.finish();
         }
+    }
+}
+
+impl fmt::Display for Program {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "PROGRAM")
     }
 }

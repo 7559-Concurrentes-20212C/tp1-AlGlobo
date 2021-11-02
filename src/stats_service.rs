@@ -1,12 +1,13 @@
+use crate::logger::Logger;
 use crate::messages::ReservationResult;
-use std::collections::VecDeque;
-use std::fs;
-use std::collections::HashMap;
 use std::collections::hash_map::IntoIter;
+use std::collections::HashMap;
+use std::collections::VecDeque;
+use std::sync::Arc;
 
 pub struct StatsService {
     history: VecDeque<ReservationResult>,
-    log_file_name: String,
+    logger: Arc<Logger>,
 }
 
 //its called moving stats because it return stats for a moving window of max size history.capacity
@@ -16,14 +17,14 @@ pub struct MovingStats {
     pub avg_latency: f32,
     pub highest_latency: f32,
     pub lowest_latency: f32,
-    pub top_airlines: Vec<(String, usize)>
+    pub top_airlines: Vec<(String, usize)>,
 }
 
 impl StatsService {
-    pub fn new(moving_avg: usize, log_file_name: String) -> StatsService {
+    pub fn new(moving_avg: usize, logger: Arc<Logger>) -> StatsService {
         StatsService {
             history: VecDeque::with_capacity(moving_avg),
-            log_file_name,
+            logger,
         }
     }
 
@@ -40,7 +41,7 @@ impl StatsService {
         let mut avg_latency = 0.0;
         let mut highest_latency: f32 = 0.0;
         let mut lowest_latency: f32 = f32::MAX;
-        let mut result:HashMap<String, usize> = HashMap::new();
+        let mut result: HashMap<String, usize> = HashMap::new();
 
         for val in self.history.iter() {
             if val.accepted {
@@ -74,8 +75,7 @@ impl StatsService {
     }
 }
 
-
-fn get_airlines_ranking(count_iter: IntoIter<String, usize>) -> Vec<(String, usize)>{
+fn get_airlines_ranking(count_iter: IntoIter<String, usize>) -> Vec<(String, usize)> {
     let mut count_vec: Vec<(String, usize)> = count_iter.collect();
     count_vec.sort_by(|a, b| b.1.cmp(&a.1));
     count_vec

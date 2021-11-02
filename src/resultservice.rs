@@ -1,19 +1,20 @@
+use crate::logger::Logger;
 use crate::messages::{Finished, Stats, ToProcessReservationResult};
 use crate::stats_service::{MovingStats, StatsService};
 use actix::{Actor, Context, Handler};
-use std::fs;
+use std::fmt;
+use std::sync::Arc;
 
 pub struct ResultService {
     stats: StatsService,
-    log_file_name: String,
+    logger: Arc<Logger>,
 }
 
 impl ResultService {
-    pub fn new(log_file_name: String) -> ResultService {
-        let cpy_log_file_name = String::from(&log_file_name);
+    pub fn new(logger: Arc<Logger>) -> ResultService {
         ResultService {
-            stats: StatsService::new(1000, cpy_log_file_name),
-            log_file_name,
+            stats: StatsService::new(1000, logger.clone()),
+            logger,
         }
     }
 
@@ -42,32 +43,19 @@ impl Handler<ToProcessReservationResult> for ResultService {
         msg: ToProcessReservationResult,
         _ctx: &mut Self::Context,
     ) -> Self::Result {
-
-        let to_log = format!(
-            "RESULT SERVICE: received result <{}>({}|{}-{}|{}|{})",
-            msg.result.reservation.id,
-            msg.result.reservation.airline,
-            msg.result.reservation.origin,
-            msg.result.reservation.destination,
-            msg.result.reservation.kind,
-            msg.result.accepted
-        );
-        fs::write(String::from(&self.log_file_name), to_log).unwrap_or_else(|_| panic!("RESULT SERVICE: Couldn't write to log"));
-        println!(
-            "RESULT SERVICE: received result <{}>({}|{}-{}|{}|{})",
-            msg.result.reservation.id,
-            msg.result.reservation.airline,
-            msg.result.reservation.origin,
-            msg.result.reservation.destination,
-            msg.result.reservation.kind,
-            msg.result.accepted
+        self.logger.log(
+            format!("{}", self),
+            "received result".to_string(),
+            format!("{}", msg.result),
         );
 
         let success = msg.result.accepted;
         self.stats.process_result_stats(msg.result);
 
         if success {
-            msg.sender.try_send(Finished {}).unwrap_or_else(|_| panic!("Could send FINISH message from RESULT SERVICE"));
+            msg.sender
+                .try_send(Finished {})
+                .unwrap_or_else(|_| panic!("Could send FINISH message from RESULT SERVICE"));
         }
     }
 }
@@ -77,5 +65,11 @@ impl Handler<Stats> for ResultService {
 
     fn handle(&mut self, _msg: Stats, _ctx: &mut Self::Context) -> Self::Result {
         let _ = self.print_results();
+    }
+}
+
+impl fmt::Display for ResultService {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "RESULT SERVICE")
     }
 }
