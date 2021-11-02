@@ -18,6 +18,18 @@ impl fmt::Display for ReservationKind {
     }
 }
 
+pub struct RankedRoutEntry {
+    pub rank: usize,
+    pub route: String,
+    pub count: usize,
+}
+
+impl fmt::Display for RankedRoutEntry {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}. {} with {} requests", self.rank, self.route, self.count)
+    }
+}
+
 #[derive(Message)]
 #[rtype(result = "()")]
 pub struct Reservation {

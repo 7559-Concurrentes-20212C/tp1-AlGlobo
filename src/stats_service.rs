@@ -1,13 +1,10 @@
-use crate::logger::Logger;
 use crate::messages::ReservationResult;
 use std::collections::hash_map::IntoIter;
 use std::collections::HashMap;
 use std::collections::VecDeque;
-use std::sync::Arc;
 
 pub struct StatsService {
     history: VecDeque<ReservationResult>,
-    logger: Arc<Logger>,
 }
 
 //its called moving stats because it return stats for a moving window of max size history.capacity
@@ -21,10 +18,9 @@ pub struct MovingStats {
 }
 
 impl StatsService {
-    pub fn new(moving_avg: usize, logger: Arc<Logger>) -> StatsService {
+    pub fn new(moving_avg: usize) -> StatsService {
         StatsService {
             history: VecDeque::with_capacity(moving_avg),
-            logger,
         }
     }
 
@@ -45,7 +41,13 @@ impl StatsService {
 
         for val in self.history.iter() {
             if val.accepted {
-                *result.entry(val.reservation.airline.clone()).or_insert(0) += 1;
+                *result
+                    .entry(format!(
+                        "{}->{}",
+                        val.reservation.origin.clone(),
+                        val.reservation.destination.clone()
+                    ))
+                    .or_insert(0) += 1;
                 success_rate += 1.0;
                 sample_size += 1;
             }

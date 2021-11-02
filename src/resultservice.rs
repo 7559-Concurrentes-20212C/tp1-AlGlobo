@@ -1,6 +1,6 @@
 use crate::logger::Logger;
-use crate::messages::{Finished, Stats, ToProcessReservationResult};
-use crate::stats_service::{MovingStats, StatsService};
+use crate::messages::{Finished, Stats, ToProcessReservationResult, RankedRoutEntry};
+use crate::stats_service::StatsService;
 use actix::{Actor, Context, Handler};
 use std::fmt;
 use std::sync::Arc;
@@ -13,21 +13,63 @@ pub struct ResultService {
 impl ResultService {
     pub fn new(logger: Arc<Logger>) -> ResultService {
         ResultService {
-            stats: StatsService::new(1000, logger.clone()),
+            stats: StatsService::new(1000),
             logger,
         }
     }
 
-    pub fn print_results(&self) -> MovingStats {
+    pub fn log_results(&self) {
         let stats = self.stats.calculate_stats();
-        println!("--- STATS ---");
-        println!("sample size {}", stats.sample_size);
-        println!("avg latency {}", stats.avg_latency);
-        println!("success rate {}", stats.success_rate);
-        println!("lowest latency {}", stats.lowest_latency);
-        println!("highest latency {}", stats.highest_latency);
-        println!("--- STATS ---");
-        stats
+
+        self.logger
+            .log("".to_string(), "".to_string(), "".to_string());
+        self.logger
+            .log("".to_string(), "--- STATS ---".to_string(), "".to_string());
+        self.logger.log(
+            "".to_string(),
+            "sample size".to_string(),
+            format!("{}", stats.sample_size),
+        );
+        self.logger.log(
+            "".to_string(),
+            "avg latency".to_string(),
+            format!("{}", stats.avg_latency),
+        );
+        self.logger.log(
+            "".to_string(),
+            "success rate".to_string(),
+            format!("{}", stats.success_rate),
+        );
+        self.logger.log(
+            "".to_string(),
+            "lowest latency".to_string(),
+            format!("{}", stats.lowest_latency),
+        );
+        self.logger.log(
+            "".to_string(),
+            "highest latency".to_string(),
+            format!("{}", stats.highest_latency),
+        );
+        self.logger
+            .log("".to_string(), "--- STATS ---".to_string(), "".to_string());
+        self.logger
+            .log("".to_string(), "".to_string(), "".to_string());
+        self.logger
+            .log("".to_string(), "--- TOP RANKED ROUTES ---".to_string(), "".to_string());
+        for i in 0..stats.top_airlines.len().min(10){
+            let stats = stats.top_airlines.get(i);
+            match stats {
+                None => {break;}
+
+                Some(s) => {
+                    self.logger.log(
+                        "".to_string(),
+                        "".to_string(),
+                        format!("{}", RankedRoutEntry {rank: i, route: s.0.clone(), count: s.1}),
+                    );
+                }
+            }
+        }
     }
 }
 
@@ -64,7 +106,7 @@ impl Handler<Stats> for ResultService {
     type Result = ();
 
     fn handle(&mut self, _msg: Stats, _ctx: &mut Self::Context) -> Self::Result {
-        let _ = self.print_results();
+        self.log_results()
     }
 }
 
