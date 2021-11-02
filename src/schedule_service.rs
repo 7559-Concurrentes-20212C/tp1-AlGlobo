@@ -1,10 +1,12 @@
+use crate::finished::Finished;
 use crate::logger::Logger;
-use crate::messages::{
-    Finished, Reservation, ReservationKind, ReservationResult, ToProcessReservation,
-    ToProcessReservationResult,
-};
 use crate::program::Program;
+use crate::reservation::Reservation;
+use crate::reservation_kind::ReservationKind;
+use crate::reservation_result::ReservationResult;
 use crate::resultservice::ResultService;
+use crate::to_process_reservation::ToProcessReservation;
+use crate::to_process_reservation_result::ToProcessReservationResult;
 use crate::webservice::Webservice;
 use actix::{Actor, Addr, AsyncContext, Context, Handler};
 use std::collections::HashMap;
@@ -205,12 +207,12 @@ impl Handler<Finished> for ScheduleService {
     }
 }
 
-fn max_duration_between(d1: Duration, d2: Duration) -> Duration {
-    Duration::from_secs_f32(d1.as_secs_f32().max(d2.as_secs_f32()))
-}
-
 impl fmt::Display for ScheduleService {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "SCHEUDLER <{}>", self.id)
     }
+}
+
+fn max_duration_between(d1: Duration, d2: Duration) -> Duration {
+    Duration::from_secs_f32(d1.as_secs_f32().max(d2.as_secs_f32()))
 }

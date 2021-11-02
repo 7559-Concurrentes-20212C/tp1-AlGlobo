@@ -1,4 +1,7 @@
-use crate::messages::{Finished, ReservationResult, ToProcessReservation};
+use crate::decision::Decision;
+use crate::finished::Finished;
+use crate::reservation_result::ReservationResult;
+use crate::to_process_reservation::ToProcessReservation;
 use actix::{Actor, ActorFutureExt, AsyncContext, Context, Handler, ResponseActFuture, WrapFuture};
 extern crate rand;
 use crate::logger::Logger;
@@ -6,20 +9,6 @@ use actix::clock::sleep;
 use std::fmt;
 use std::sync::Arc;
 use std::time::Duration;
-
-enum Decision {
-    Accepted,
-    Rejected,
-}
-
-impl fmt::Display for Decision {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
-            Decision::Accepted => write!(f, "Accepted"),
-            Decision::Rejected => write!(f, "Rejected"),
-        }
-    }
-}
 
 pub struct Webservice {
     capacity: usize,

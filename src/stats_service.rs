@@ -1,20 +1,11 @@
-use crate::messages::ReservationResult;
+use crate::moving_stats::MovingStats;
+use crate::reservation_result::ReservationResult;
 use std::collections::hash_map::IntoIter;
 use std::collections::HashMap;
 use std::collections::VecDeque;
 
 pub struct StatsService {
     history: VecDeque<ReservationResult>,
-}
-
-//its called moving stats because it return stats for a moving window of max size history.capacity
-pub struct MovingStats {
-    pub sample_size: usize,
-    pub success_rate: f32,
-    pub avg_latency: f32,
-    pub highest_latency: f32,
-    pub lowest_latency: f32,
-    pub top_routes: Vec<(String, usize)>,
 }
 
 impl StatsService {

@@ -1,7 +1,10 @@
+use crate::finished::Finished;
 use crate::logger::Logger;
-use crate::messages::{Finished, Reservation, Run, Stats};
+use crate::reservation::Reservation;
 use crate::resultservice::ResultService;
+use crate::run::Run;
 use crate::schedule_service::ScheduleService;
+use crate::stats::Stats;
 use crate::webservice::Webservice;
 use actix::{Actor, Addr, AsyncContext, Context, Handler};
 use std::collections::HashMap;

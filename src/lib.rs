@@ -1,14 +1,25 @@
 mod logger;
-mod messages;
 pub mod program;
 mod resultservice;
 mod schedule_service;
 mod stats_service;
 mod webservice;
 
+mod decision;
+mod finished;
+mod moving_stats;
+mod ranked_route_entry;
+mod reservation;
+mod reservation_kind;
+mod reservation_result;
+mod run;
+mod stats;
+mod to_process_reservation;
+mod to_process_reservation_result;
+
 use actix::{Actor, System};
-use messages::Run;
 use program::Program;
+use run::Run;
 
 pub fn run() {
     let system = System::new();

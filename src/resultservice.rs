@@ -1,6 +1,9 @@
+use crate::finished::Finished;
 use crate::logger::Logger;
-use crate::messages::{Finished, RankedRoutEntry, Stats, ToProcessReservationResult};
+use crate::ranked_route_entry::RankedRouteEntry;
+use crate::stats::Stats;
 use crate::stats_service::StatsService;
+use crate::to_process_reservation_result::ToProcessReservationResult;
 use actix::{Actor, Context, Handler};
 use std::fmt;
 use std::sync::Arc;
@@ -72,7 +75,7 @@ impl ResultService {
                         "".to_string(),
                         format!(
                             "{}",
-                            RankedRoutEntry {
+                            RankedRouteEntry {
                                 rank: i,
                                 route: s.0.clone(),
                                 count: s.1
