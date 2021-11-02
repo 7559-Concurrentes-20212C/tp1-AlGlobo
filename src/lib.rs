@@ -1,18 +1,17 @@
 pub mod program;
 pub mod reservation;
-pub mod thread_pool;
 pub mod resultservice;
-pub mod webservice;
-pub mod stats_service;
 pub mod schedule_service;
+pub mod stats_service;
+pub mod thread_pool;
 pub mod unit_tests;
+pub mod webservice;
 
-use program::{Program};
+use program::Program;
 
 use std::env;
 
 pub fn run() {
-
     println!("Setting up environment...");
 
     const RATE_LIMIT: u32 = 4;
@@ -20,4 +19,3 @@ pub fn run() {
     program.run(env::args().collect());
     program.print_results();
 }
-

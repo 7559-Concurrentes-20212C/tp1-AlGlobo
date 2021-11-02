@@ -1,9 +1,8 @@
-
 #[cfg(test)]
 mod tests_thread_pool {
     use super::*;
     use crate::thread_pool;
-    use thread_pool::{ThreadPool};
+    use thread_pool::ThreadPool;
 
     #[test]
     #[should_panic]
@@ -28,22 +27,22 @@ mod tests_thread_pool {
 #[cfg(test)]
 mod tests_webservice {
     use super::*;
+    use crate::reservation::{Reservation, ReservationKind};
     use crate::webservice::Webservice;
     use std::time::Instant;
-    use crate::reservation::{Reservation, ReservationKind};
 
     #[test]
     fn should_execute() {
         let w = Webservice::new(1);
         let now = Arc::new(Instant::now());
-        let f = Arc::new(Reservation{
+        let f = Arc::new(Reservation {
             origin: "a".to_string(),
             destination: "b".to_string(),
             airline: "c".to_string(),
-            kind: ReservationKind::Flight
+            kind: ReservationKind::Flight,
         });
 
-        assert_eq!( w.process(f.clone(), now).airline,  f.airline);
+        assert_eq!(w.process(f.clone(), now).airline, f.airline);
     }
 }
 
@@ -51,24 +50,24 @@ mod tests_webservice {
 mod test_stats_service {
 
     use super::*;
-    use crate::webservice::Webservice;
-    use crate::stats_service::StatsService;
-    use std::time::Instant;
     use crate::reservation::{Reservation, ReservationKind};
+    use crate::stats_service::StatsService;
+    use crate::webservice::Webservice;
+    use std::time::Instant;
 
     #[test]
     fn should_execute() {
         let s = StatsService::new(1, 1);
         let w = Webservice::new(1);
         let now = Arc::new(Instant::now());
-        let f = Reservation{
+        let f = Reservation {
             origin: "a".to_string(),
             destination: "b".to_string(),
             airline: "c".to_string(),
-            kind: ReservationKind::Flight
+            kind: ReservationKind::Flight,
         };
 
-        s.process_result_stats( w.process(Arc::from(f), now) );
+        s.process_result_stats(w.process(Arc::from(f), now));
         assert_eq!(1, 1);
     }
 }
@@ -77,11 +76,11 @@ mod test_stats_service {
 mod test_result_service {
 
     use super::*;
+    use crate::reservation::{Reservation, ReservationKind};
+    use crate::resultservice::ResultService;
+    use crate::stats_service::StatsService;
     use crate::webservice::Webservice;
     use std::time::Instant;
-    use crate::resultservice::ResultService;
-    use crate::reservation::{Reservation, ReservationKind};
-    use crate::stats_service::StatsService;
 
     #[test]
     #[should_panic]
@@ -94,14 +93,14 @@ mod test_result_service {
         let w = Webservice::new(1);
         let now = Arc::new(Instant::now());
         let r = ResultService::new(1);
-        let f = Reservation{
+        let f = Reservation {
             origin: "a".to_string(),
             destination: "b".to_string(),
             airline: "c".to_string(),
-            kind: ReservationKind::Flight
+            kind: ReservationKind::Flight,
         };
 
-        r.process_result( w.process(Arc::from(f), now) );
+        r.process_result(w.process(Arc::from(f), now));
         //since there are threads involved, might be wise to use a condvar?
         assert_eq!(1, 1);
     }

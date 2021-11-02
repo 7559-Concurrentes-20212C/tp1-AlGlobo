@@ -31,12 +31,14 @@ impl ThreadPool {
     }
 
     pub fn execute<F>(&self, f: F)
-        where
-            F: FnOnce() + Send + 'static,
+    where
+        F: FnOnce() + Send + 'static,
     {
         let job = Box::new(f);
 
-        self.sender.send(Message::NewJob(job)).expect("Error in sending Job to Worker"); //TODO chequear si no habria que manejar el error o burbujearlo
+        self.sender
+            .send(Message::NewJob(job))
+            .expect("Error in sending Job to Worker"); //TODO chequear si no habria que manejar el error o burbujearlo
     }
 }
 
@@ -45,7 +47,9 @@ impl Drop for ThreadPool {
         //println!("Sending terminate message to all workers.");
 
         for _ in &self.workers {
-            self.sender.send(Message::Terminate).expect("Error in sending Job to Worker"); //TODO chequear si no habria que manejar el error o burbujearlo
+            self.sender
+                .send(Message::Terminate)
+                .expect("Error in sending Job to Worker"); //TODO chequear si no habria que manejar el error o burbujearlo
         }
 
         //println!("Shutting down all workers.");
@@ -53,8 +57,11 @@ impl Drop for ThreadPool {
         for worker in &mut self.workers {
             //println!("Shutting down worker {}", worker.id);
 
-            if let Some(thread) = worker.thread.take() { // TODO take seria como un unwrap chequear
-                thread.join().expect("there was an error joining the workings");
+            if let Some(thread) = worker.thread.take() {
+                // TODO take seria como un unwrap chequear
+                thread
+                    .join()
+                    .expect("there was an error joining the workings");
             }
         }
     }
@@ -68,10 +75,9 @@ struct Worker {
 impl Worker {
     fn new(id: usize, receiver: Arc<Mutex<mpsc::Receiver<Message>>>) -> Worker {
         let thread = thread::spawn(move || loop {
-            
             let message = match receiver.lock().expect("poisoned lock").recv() {
-                Ok(msg) => {msg}
-                Err(_) => {return}
+                Ok(msg) => msg,
+                Err(_) => return,
             };
 
             match message {
@@ -84,6 +90,9 @@ impl Worker {
             }
         });
 
-        Worker { _id: id, thread: Some(thread), }
+        Worker {
+            _id: id,
+            thread: Some(thread),
+        }
     }
 }

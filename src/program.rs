@@ -1,32 +1,30 @@
-
-use std::sync::{Arc, mpsc, Mutex};
+use crate::reservation::Reservation;
+use crate::resultservice::ResultService;
+use crate::schedule_service::ScheduleService;
+use crate::stats_service::MovingStats;
+use crate::webservice::Webservice;
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::BufRead;
 use std::io::BufReader;
-use crate::schedule_service::ScheduleService;
-use crate::stats_service::MovingStats;
-use crate::resultservice::ResultService;
-use crate::webservice::Webservice;
-use crate::reservation::Reservation;
+use std::sync::{mpsc, Arc, Mutex};
 
 pub struct Program {
-    results_service : Arc<ResultService>,
-    web_services : HashMap<String, ScheduleService>,
-    hotel : Arc<Webservice>
-
+    results_service: Arc<ResultService>,
+    web_services: HashMap<String, ScheduleService>,
+    hotel: Arc<Webservice>,
 }
 
 impl Program {
-    pub fn new(rate : u32) -> Program {
-        Program{
+    pub fn new(rate: u32) -> Program {
+        Program {
             results_service: Arc::new(ResultService::new(rate)),
             web_services: HashMap::new(),
-            hotel:  Arc::new(Webservice::new(100))
+            hotel: Arc::new(Webservice::new(100)),
         }
     }
 
-    pub fn run(&mut self, _args: Vec<String>){
+    pub fn run(&mut self, _args: Vec<String>) {
         println!("Setting up environment...");
 
         let reservations: String = String::from("reservations.txt");
@@ -38,7 +36,10 @@ impl Program {
         let f = File::open(reservations);
         let file = match f {
             Ok(file) => file,
-            Err(error) => { println!("problem opening file: {:?}", error);return;},
+            Err(error) => {
+                println!("problem opening file: {:?}", error);
+                return;
+            }
         };
         let reader = BufReader::new(file);
 
@@ -52,9 +53,9 @@ impl Program {
             let scheduler = match self.web_services.get(&*reservation.airline) {
                 None => {
                     println!("invalid airline reservation: {}", reservation.airline);
-                    continue
+                    continue;
                 }
-                Some(s) => { s }
+                Some(s) => s,
             };
             reqs += 1;
             scheduler.schedule_to_process(reservation, sender.clone());
@@ -78,7 +79,7 @@ impl Program {
             Err(error) => {
                 println!("problem opening file: {:?}", error);
                 return;
-            },
+            }
         };
         let reader = BufReader::new(file);
 
@@ -88,11 +89,16 @@ impl Program {
             let acceptance_rate = params[2].parse::<u32>().unwrap();
             let retry_wait = params[3].parse::<u64>().unwrap();
             let webservice = Arc::new(Webservice::new(acceptance_rate));
-            self.web_services.insert(params[0].parse().unwrap(), ScheduleService::new(capacity,
-                                                                                      retry_wait,
-                                                                                 webservice,
-                                                                                 self.hotel.clone(),
-                                                                                 self.results_service.clone()));
+            self.web_services.insert(
+                params[0].parse().unwrap(),
+                ScheduleService::new(
+                    capacity,
+                    retry_wait,
+                    webservice,
+                    self.hotel.clone(),
+                    self.results_service.clone(),
+                ),
+            );
         }
     }
 }

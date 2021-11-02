@@ -1,5 +1,5 @@
 use std::sync::Arc;
-use std::time::{Duration};
+use std::time::Duration;
 
 pub enum ReservationKind {
     Flight,
@@ -14,11 +14,9 @@ pub struct Reservation {
 }
 
 impl Reservation {
-  
     pub fn from_line(line: String) -> Reservation {
-
         let params = line.split(',').collect::<Vec<&str>>();
-    
+
         Reservation {
             origin: String::from(params[0]),
             destination: String::from(params[1]),
@@ -29,9 +27,7 @@ impl Reservation {
             },
         }
     }
-
 }
-
 
 pub struct ReservationResult {
     pub origin: String,
@@ -43,18 +39,22 @@ pub struct ReservationResult {
 }
 
 impl ReservationResult {
-
-    pub fn from_reservation_ref(reservation : Arc<Reservation>, accepted : bool, delay : Duration) -> ReservationResult {
+    pub fn from_reservation_ref(
+        reservation: Arc<Reservation>,
+        accepted: bool,
+        delay: Duration,
+    ) -> ReservationResult {
         ReservationResult {
             origin: reservation.origin.clone(),
             destination: reservation.destination.clone(),
             airline: reservation.airline.clone(),
             accepted,
-            time_to_process : delay,
-            kind: if matches!( reservation.kind, ReservationKind::Flight)
-                    {ReservationKind::Flight}
-                else {ReservationKind::Package}
+            time_to_process: delay,
+            kind: if matches!(reservation.kind, ReservationKind::Flight) {
+                ReservationKind::Flight
+            } else {
+                ReservationKind::Package
+            },
         }
     }
 }
-
