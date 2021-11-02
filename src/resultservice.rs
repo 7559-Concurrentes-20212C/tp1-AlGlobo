@@ -43,8 +43,8 @@ impl ResultService {
         println!("highest latency {}", stats.highest_latency);
         println!(" ");
         println!("--- TOP RANKED ROUTES ---");
-        for i in 0..stats.top_airlines.len().min(10) {
-            let stats = stats.top_airlines.get(i);
+        for i in 0..stats.top_routes.len().min(10) {
+            let stats = stats.top_routes.get(i);
             match stats {
                 None => {
                     break;
@@ -72,8 +72,8 @@ impl ResultService {
                                        , stats.lowest_latency, stats.highest_latency).as_ref())
                     .expect("could not log data");
 
-                for i in 0..stats.top_airlines.len().min(10) {
-                    let stats = stats.top_airlines.get(i);
+                for i in 0..stats.top_routes.len().min(10) {
+                    let stats = stats.top_routes.get(i);
                     match stats {
                         None => {
                             break;

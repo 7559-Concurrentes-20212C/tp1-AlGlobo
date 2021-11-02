@@ -18,7 +18,7 @@ pub struct MovingStats {
     pub avg_latency: f32,
     pub highest_latency: f32,
     pub lowest_latency: f32,
-    pub top_airlines: Vec<(String, usize)>,
+    pub top_routes: Vec<(String, usize)>,
 }
 
 impl StatsService {
@@ -78,7 +78,7 @@ impl StatsService {
                 avg_latency: 0.0,
                 highest_latency: 0.0,
                 lowest_latency: 0.0,
-                top_airlines: vec![],
+                top_routes: vec![],
             };
         }
 
@@ -89,7 +89,7 @@ impl StatsService {
             avg_latency: avg_latency / history.len() as f32,
             highest_latency,
             lowest_latency,
-            top_airlines: get_airlines_ranking(result.into_iter()),
+            top_routes: get_airlines_ranking(result.into_iter()),
         }
     }
 }
