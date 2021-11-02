@@ -5,7 +5,6 @@ pub mod resultservice;
 pub mod schedule_service;
 pub mod stats_service;
 pub mod thread_pool;
-pub mod unit_tests;
 pub mod webservice;
 
 pub mod decision;
