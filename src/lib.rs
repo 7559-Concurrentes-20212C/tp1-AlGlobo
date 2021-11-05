@@ -16,6 +16,7 @@ pub mod worker;
 pub mod ranked_route_entry;
 pub mod reservation_kind;
 pub mod reservation_result;
+mod cooldown_service;
 
 use program::Program;
 
