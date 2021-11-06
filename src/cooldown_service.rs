@@ -25,7 +25,10 @@ impl CooldownService{
 
         self.thread_pool.lock().expect("lock is poisoned").execute(move || {
             let elapsed = start.elapsed();
-            let wait = 0.max(retry_wait - elapsed.as_millis() as u64);
+            let mut wait = 0;
+            if retry_wait as u128 > elapsed.as_millis(){
+                wait = retry_wait - elapsed.as_millis() as u64;
+            };
             thread::sleep(time::Duration::from_millis(wait.min( retry_wait )));
             scheduler.schedule_to_process(scheduler.clone(), reservation, finished_response);
         });
