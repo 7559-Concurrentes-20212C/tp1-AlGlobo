@@ -14,11 +14,15 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use std::fmt;
+use crate::cooldown_service::CooldownService;
+use crate::reservation_cooldown::CooldownReservation;
+use actix::clock::Instant;
 
 pub struct ScheduleService {
     webservice: Addr<Webservice>,
     hotel_webservice: Arc<Addr<Webservice>>,
     result_service: Arc<Addr<ResultService>>,
+    cooldown_service: Addr<CooldownService>,
     logger: Arc<Logger>,
     results: HashMap<usize, ReservationResult>,
     caller: Arc<Addr<Program>>,
@@ -38,6 +42,7 @@ impl ScheduleService {
             webservice,
             hotel_webservice,
             result_service,
+            cooldown_service: CooldownService::new(500).start(), //TODO deshardcodear el tiempo de espera
             logger,
             results: HashMap::new(),
             caller,
@@ -114,13 +119,14 @@ impl Handler<ReservationResult> for ScheduleService {
 
         match msg.reservation.kind {
             ReservationKind::Flight => {
-                if !msg.accepted
-                    && msg.reservation.current_attempt_num < msg.reservation.max_attempts
-                {
-                    let mut next_iteration_msg = msg.reservation.clone();
-                    next_iteration_msg.current_attempt_num += 1;
-                    _ctx.address()
-                        .try_send(next_iteration_msg)
+                if !msg.accepted{
+                    let reservation = msg.reservation.clone();
+                    self.cooldown_service
+                        .try_send(CooldownReservation{
+                            caller: _ctx.address().recipient(),
+                            reservation,
+                            requested: Instant::now()
+                        })
                         .unwrap_or_else(|_| {
                             panic!(
                                 "SCHEDULER <{}>: Couldn't send RESERVATION to itself for retry",
@@ -142,7 +148,38 @@ impl Handler<ReservationResult> for ScheduleService {
                     });
             }
             ReservationKind::Package => {
-                if self.results.contains_key(&msg.reservation.id) {
+                if !msg.accepted {
+                    let reservation = msg.reservation.clone();
+                    self.cooldown_service
+                        .try_send(CooldownReservation{
+                            caller: _ctx.address().recipient(),
+                            reservation,
+                            requested: Instant::now()
+                        })
+                        .unwrap_or_else(|_| {
+                            panic!(
+                                "SCHEDULER <{}>: Couldn't send RESERVATION to itself for retry",
+                                self.id
+                            )
+                        });
+                    let result = ReservationResult::from_reservation_ref(
+                        msg.reservation,
+                        msg.accepted,
+                        msg.time_to_process,
+                    );
+                    self.result_service
+                        .try_send(ToProcessReservationResult {
+                            result,
+                            sender: _ctx.address().recipient(),
+                        })
+                        .unwrap_or_else(|_| {
+                            panic!(
+                                "SCHEDULER <{}>: Couldn't send RESULT message to RESULT SERVICE",
+                                self.id
+                            )
+                        });
+                }
+                else if self.results.contains_key(&msg.reservation.id) {
                     let id = msg.reservation.id;
                     let r1 = msg;
                     let r2 = self
@@ -157,21 +194,6 @@ impl Handler<ReservationResult> for ScheduleService {
                         reservation_accepted_val,
                         max_duration_between(r1.time_to_process, r2.time_to_process),
                     );
-
-                    if !reservation_accepted_val
-                        && result.reservation.current_attempt_num < result.reservation.max_attempts
-                    {
-                        let mut next_iteration_msg = result.reservation.clone();
-                        next_iteration_msg.current_attempt_num += 1;
-                        _ctx.address()
-                            .try_send(next_iteration_msg)
-                            .unwrap_or_else(|_| {
-                                panic!(
-                                    "SCHEDULER <{}>: Couldn't send RESERVATION to itself for retry",
-                                    self.id
-                                )
-                            });
-                    }
 
                     self.result_service
                         .try_send(ToProcessReservationResult {

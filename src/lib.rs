@@ -16,6 +16,8 @@ mod run;
 mod stats;
 mod to_process_reservation;
 mod to_process_reservation_result;
+mod cooldown_service;
+mod reservation_cooldown;
 
 use actix::{Actor, System};
 use program::Program;
