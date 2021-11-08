@@ -178,19 +178,19 @@ impl Handler<ReservationResult> for ScheduleService {
                         )
                     });
             }
+        }
 
-            if !self.queued_reservations.is_empty() {
-                let queued_msg = self
-                    .queued_reservations
-                    .pop_back()
-                    .expect("INTERNAL ERROR: Coudnt' pop queued reservation");
-                _ctx.address().try_send(queued_msg).unwrap_or_else(|_| {
-                    panic!(
-                        "SCHEDULER <{}>: Couldn't send RESERVATION to itself",
-                        self.id
-                    )
-                });
-            }
+        if !self.queued_reservations.is_empty() {
+            let queued_msg = self
+                .queued_reservations
+                .pop_back()
+                .expect("INTERNAL ERROR: Coudnt' pop queued reservation");
+            _ctx.address().try_send(queued_msg).unwrap_or_else(|_| {
+                panic!(
+                    "SCHEDULER <{}>: Couldn't send RESERVATION to itself",
+                    self.id
+                )
+            });
         }
     }
 }
