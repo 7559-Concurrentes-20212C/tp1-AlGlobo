@@ -53,9 +53,7 @@ impl Handler<ToProcessReservation> for Webservice {
     fn handle(&mut self, msg: ToProcessReservation, _ctx: &mut Self::Context) -> Self::Result {
         let decision = self.decide();
 
-        let rand_time: u64 = rand::random();
-        let process_time: u64 = (rand_time % 1000) as u64;
-
+        let process_time = rand::thread_rng().gen_range(0..1000);
         self.logger.log_extra_arg(
             format!("{}", self),
             "received reservation".to_string(),

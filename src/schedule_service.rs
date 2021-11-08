@@ -11,6 +11,7 @@ use crate::webservice::Webservice;
 use crate::webservice_kind::WebserviceKind;
 use actix::{Actor, Addr, AsyncContext, Context, Handler};
 use std::collections::HashMap;
+use std::collections::VecDeque;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -26,6 +27,7 @@ pub struct ScheduleService {
     cooldown_service: Addr<CooldownService>,
     logger: Arc<Logger>,
     results: HashMap<usize, ReservationResult>,
+    queued_reservations: VecDeque<Reservation>,
     caller: Arc<Addr<Program>>,
     amount_processing: usize,
     capacity: usize,
@@ -49,6 +51,7 @@ impl ScheduleService {
             cooldown_service: CooldownService::new(params.1 as u64).start(),
             logger,
             results: HashMap::new(),
+            queued_reservations: VecDeque::new(),
             caller,
             amount_processing: 0,
             capacity: params.0,
@@ -85,12 +88,7 @@ impl Handler<Reservation> for ScheduleService {
                 });
             self.amount_processing += 1;
         } else {
-            _ctx.address().try_send(msg.clone()).unwrap_or_else(|_| {
-                panic!(
-                    "SCHEDULER <{}>: Couldn't send RESERVATION to itself",
-                    self.id
-                )
-            });
+            self.queued_reservations.push_front(msg.clone());
         }
 
         if let ReservationKind::Package = msg.kind {
@@ -180,6 +178,19 @@ impl Handler<ReservationResult> for ScheduleService {
                         )
                     });
             }
+
+            if !self.queued_reservations.is_empty() {
+                let queued_msg = self
+                    .queued_reservations
+                    .pop_back()
+                    .expect("INTERNAL ERROR: Coudnt' pop queued reservation");
+                _ctx.address().try_send(queued_msg).unwrap_or_else(|_| {
+                    panic!(
+                        "SCHEDULER <{}>: Couldn't send RESERVATION to itself",
+                        self.id
+                    )
+                });
+            }
         }
     }
 }
@@ -199,7 +210,11 @@ impl Handler<Finished> for ScheduleService {
 
 impl fmt::Display for ScheduleService {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "SCHEUDLER <{}>(procesing <{}>)", self.id, self.amount_processing)
+        write!(
+            f,
+            "SCHEUDLER <{}>(procesing <{}>)",
+            self.id, self.amount_processing
+        )
     }
 }
 
