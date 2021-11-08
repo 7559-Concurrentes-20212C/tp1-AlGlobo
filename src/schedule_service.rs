@@ -8,15 +8,16 @@ use crate::resultservice::ResultService;
 use crate::to_process_reservation::ToProcessReservation;
 use crate::to_process_reservation_result::ToProcessReservationResult;
 use crate::webservice::Webservice;
+use crate::webservice_kind::WebserviceKind;
 use actix::{Actor, Addr, AsyncContext, Context, Handler};
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
 
-use std::fmt;
 use crate::cooldown_service::CooldownService;
 use crate::reservation_cooldown::CooldownReservation;
 use actix::clock::Instant;
+use std::fmt;
 
 pub struct ScheduleService {
     webservice: Addr<Webservice>,
@@ -26,11 +27,14 @@ pub struct ScheduleService {
     logger: Arc<Logger>,
     results: HashMap<usize, ReservationResult>,
     caller: Arc<Addr<Program>>,
+    amount_processing: usize,
+    capacity: usize,
     pub id: usize,
 }
 
 impl ScheduleService {
     pub fn new(
+        params: (usize, usize),
         webservice: Addr<Webservice>,
         hotel_webservice: Arc<Addr<Webservice>>,
         result_service: Arc<Addr<ResultService>>,
@@ -42,10 +46,12 @@ impl ScheduleService {
             webservice,
             hotel_webservice,
             result_service,
-            cooldown_service: CooldownService::new(500).start(), //TODO deshardcodear el tiempo de espera
+            cooldown_service: CooldownService::new(params.1 as u64).start(),
             logger,
             results: HashMap::new(),
             caller,
+            amount_processing: 0,
+            capacity: params.0,
             id,
         }
     }
@@ -65,32 +71,30 @@ impl Handler<Reservation> for ScheduleService {
             format!("{}", msg),
         );
 
-        match msg.kind {
-            ReservationKind::Flight => {
-                self.webservice
-                    .try_send(ToProcessReservation {
-                        reservation: msg,
-                        sender: _ctx.address().recipient(),
-                    })
-                    .unwrap_or_else(|_| {
-                        panic!(
-                            "SCHEDULER <{}>: Couldn't send RESULT message to WEBSERVICE",
-                            self.id
-                        )
-                    });
-            }
-            ReservationKind::Package => {
-                self.webservice
-                    .try_send(ToProcessReservation {
-                        reservation: msg.clone(),
-                        sender: _ctx.address().recipient(),
-                    })
-                    .unwrap_or_else(|_| {
-                        panic!(
-                            "SCHEDULER <{}>: Couldn't send RESERVATION message to WEBSERVICE",
-                            self.id
-                        )
-                    });
+        if self.amount_processing < self.capacity {
+            self.webservice
+                .try_send(ToProcessReservation {
+                    reservation: msg.clone(),
+                    sender: _ctx.address().recipient(),
+                })
+                .unwrap_or_else(|_| {
+                    panic!(
+                        "SCHEDULER <{}>: Couldn't send RESULT message to WEBSERVICE",
+                        self.id
+                    )
+                });
+            self.amount_processing += 1;
+        } else {
+            _ctx.address().try_send(msg.clone()).unwrap_or_else(|_| {
+                panic!(
+                    "SCHEDULER <{}>: Couldn't send RESERVATION to itself",
+                    self.id
+                )
+            });
+        }
+
+        if let ReservationKind::Package = msg.kind {
+            if msg.fresh {
                 self.hotel_webservice
                     .try_send(ToProcessReservation {
                         reservation: msg,
@@ -110,31 +114,60 @@ impl Handler<Reservation> for ScheduleService {
 impl Handler<ReservationResult> for ScheduleService {
     type Result = ();
 
-    fn handle(&mut self, msg: ReservationResult, _ctx: &mut Self::Context) -> Self::Result {
+    fn handle(&mut self, mut msg: ReservationResult, _ctx: &mut Self::Context) -> Self::Result {
         self.logger.log(
             format!("{}", self),
             "received result".to_string(),
             format!("{}", msg),
         );
 
-        match msg.reservation.kind {
-            ReservationKind::Flight => {
-                if !msg.accepted{
-                    let reservation = msg.reservation.clone();
-                    self.cooldown_service
-                        .try_send(CooldownReservation{
-                            caller: _ctx.address().recipient(),
-                            reservation,
-                            requested: Instant::now()
-                        })
-                        .unwrap_or_else(|_| {
-                            panic!(
-                                "SCHEDULER <{}>: Couldn't send RESERVATION to itself for retry",
-                                self.id
-                            )
-                        });
-                }
+        let mut ready_to_process_result = true;
 
+        if let WebserviceKind::Airline = msg.creator {
+            self.amount_processing -= 1;
+        }
+
+        if !msg.accepted {
+            let mut reservation = msg.reservation;
+            reservation.fresh = false;
+            self.cooldown_service
+                .try_send(CooldownReservation {
+                    caller: _ctx.address().recipient(),
+                    reservation,
+                    requested: Instant::now(),
+                })
+                .unwrap_or_else(|_| {
+                    panic!(
+                        "SCHEDULER <{}>: Couldn't send RESERVATION to itself for retry",
+                        self.id
+                    )
+                });
+        } else {
+            if let ReservationKind::Package = msg.reservation.kind {
+                if self.results.contains_key(&msg.reservation.id) {
+                    let id = msg.reservation.id;
+                    let r1 = msg;
+                    let r2 = self
+                        .results
+                        .get(&id)
+                        .unwrap_or_else(|| panic!("SCHEDULER <{}>: INTERNAL ERROR", self.id));
+
+                    let reservation_accepted_val = r1.accepted && r2.accepted;
+
+                    msg = ReservationResult::from_reservation_ref(
+                        r1.reservation,
+                        reservation_accepted_val,
+                        max_duration_between(r1.time_to_process, r2.time_to_process),
+                        WebserviceKind::Merge,
+                    );
+                } else {
+                    ready_to_process_result = false;
+                    self.results
+                        .entry(msg.reservation.id)
+                        .or_insert_with(|| msg.clone());
+                }
+            }
+            if ready_to_process_result {
                 self.result_service
                     .try_send(ToProcessReservationResult {
                         result: msg,
@@ -146,71 +179,6 @@ impl Handler<ReservationResult> for ScheduleService {
                             self.id
                         )
                     });
-            }
-            ReservationKind::Package => {
-                if !msg.accepted {
-                    let reservation = msg.reservation.clone();
-                    self.cooldown_service
-                        .try_send(CooldownReservation{
-                            caller: _ctx.address().recipient(),
-                            reservation,
-                            requested: Instant::now()
-                        })
-                        .unwrap_or_else(|_| {
-                            panic!(
-                                "SCHEDULER <{}>: Couldn't send RESERVATION to itself for retry",
-                                self.id
-                            )
-                        });
-                    let result = ReservationResult::from_reservation_ref(
-                        msg.reservation,
-                        msg.accepted,
-                        msg.time_to_process,
-                    );
-                    self.result_service
-                        .try_send(ToProcessReservationResult {
-                            result,
-                            sender: _ctx.address().recipient(),
-                        })
-                        .unwrap_or_else(|_| {
-                            panic!(
-                                "SCHEDULER <{}>: Couldn't send RESULT message to RESULT SERVICE",
-                                self.id
-                            )
-                        });
-                }
-                else if self.results.contains_key(&msg.reservation.id) {
-                    let id = msg.reservation.id;
-                    let r1 = msg;
-                    let r2 = self
-                        .results
-                        .get(&id)
-                        .unwrap_or_else(|| panic!("SCHEDULER <{}>: INTERNAL ERROR", self.id));
-
-                    let reservation_accepted_val = r1.accepted && r2.accepted;
-
-                    let result = ReservationResult::from_reservation_ref(
-                        r1.reservation,
-                        reservation_accepted_val,
-                        max_duration_between(r1.time_to_process, r2.time_to_process),
-                    );
-
-                    self.result_service
-                        .try_send(ToProcessReservationResult {
-                            result,
-                            sender: _ctx.address().recipient(),
-                        })
-                        .unwrap_or_else(|_| {
-                            panic!(
-                                "SCHEDULER <{}>: Couldn't send RESULT message to RESULT SERVICE",
-                                self.id
-                            )
-                        });
-
-                    self.results.remove_entry(&id);
-                } else {
-                    self.results.entry(msg.reservation.id).or_insert(msg);
-                }
             }
         }
     }
@@ -231,7 +199,7 @@ impl Handler<Finished> for ScheduleService {
 
 impl fmt::Display for ScheduleService {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "SCHEUDLER <{}>", self.id)
+        write!(f, "SCHEUDLER <{}>(procesing <{}>)", self.id, self.amount_processing)
     }
 }
 
