@@ -11,11 +11,11 @@ use thread_pool::ThreadPool;
 pub struct ResultService {
     thread_pool: Mutex<ThreadPool>,
     stats: Arc<StatsService>,
-    logger: Arc<Logger>,
+    logger: Arc<Mutex<Logger>>,
 }
 
 impl ResultService {
-    pub fn new(rate_limit: u32, logger: Arc<Logger>) -> ResultService {
+    pub fn new(rate_limit: u32, logger: Arc<Mutex<Logger>>) -> ResultService {
         ResultService {
             thread_pool: Mutex::new(ThreadPool::new(rate_limit as usize)),
             stats: Arc::new(StatsService::new(rate_limit as usize, 1000)),
@@ -26,7 +26,7 @@ impl ResultService {
     pub fn process_result(&self, result: ReservationResult) {
         let stats = self.stats.clone();
 
-        self.logger.log(
+        self.logger.lock().expect("poisoned lock").log(
             format!("{}", self),
             "received result".to_string(),
             format!("{}", result),
@@ -43,45 +43,57 @@ impl ResultService {
     pub fn log_results(&self) {
         let stats = self.stats.calculate_stats();
 
-        self.logger
-            .log("".to_string(), "".to_string(), "".to_string());
-        self.logger
-            .log("".to_string(), "--- STATS ---".to_string(), "".to_string());
-        self.logger.log(
+        self.logger.lock().expect("poisoned lock").log(
             "".to_string(),
-            "sample size".to_string(),
+            "".to_string(),
+            "".to_string(),
+        );
+        self.logger.lock().expect("poisoned lock").log(
+            "".to_string(),
+            "--- STATS ---".to_string(),
+            "".to_string(),
+        );
+        self.logger.lock().expect("poisoned lock").log(
+            "".to_string(),
+            "succesful".to_string(),
             format!("{}", stats.successful),
         );
-        self.logger.log(
+        self.logger.lock().expect("poisoned lock").log(
             "".to_string(),
-            "sample size".to_string(),
+            "failed".to_string(),
             format!("{}", stats.failed),
         );
-        self.logger.log(
+        self.logger.lock().expect("poisoned lock").log(
             "".to_string(),
             "avg latency".to_string(),
             format!("{}", stats.avg_latency),
         );
-        self.logger.log(
+        self.logger.lock().expect("poisoned lock").log(
             "".to_string(),
             "success rate".to_string(),
             format!("{}", stats.success_rate),
         );
-        self.logger.log(
+        self.logger.lock().expect("poisoned lock").log(
             "".to_string(),
             "lowest latency".to_string(),
             format!("{}", stats.lowest_latency),
         );
-        self.logger.log(
+        self.logger.lock().expect("poisoned lock").log(
             "".to_string(),
             "highest latency".to_string(),
             format!("{}", stats.highest_latency),
         );
-        self.logger
-            .log("".to_string(), "--- STATS ---".to_string(), "".to_string());
-        self.logger
-            .log("".to_string(), "".to_string(), "".to_string());
-        self.logger.log(
+        self.logger.lock().expect("poisoned lock").log(
+            "".to_string(),
+            "--- STATS ---".to_string(),
+            "".to_string(),
+        );
+        self.logger.lock().expect("poisoned lock").log(
+            "".to_string(),
+            "".to_string(),
+            "".to_string(),
+        );
+        self.logger.lock().expect("poisoned lock").log(
             "".to_string(),
             "--- TOP RANKED ROUTES ---".to_string(),
             "".to_string(),
@@ -94,7 +106,7 @@ impl ResultService {
                 }
 
                 Some(s) => {
-                    self.logger.log(
+                    self.logger.lock().expect("poisoned lock").log(
                         "".to_string(),
                         "".to_string(),
                         format!(

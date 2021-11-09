@@ -4,9 +4,11 @@ extern crate rand;
 use crate::decision::Decision;
 use crate::logger::Logger;
 use crate::reservation_result::ReservationResult;
+use crate::webservice::rand::Rng;
 use reservation::Reservation;
 use std::fmt;
 use std::sync::Arc;
+use std::sync::Mutex;
 use std::thread;
 use std::time;
 use std::time::Instant;
@@ -14,11 +16,11 @@ use std::time::Instant;
 pub struct Webservice {
     id: usize,
     success_rate: u32,
-    logger: Arc<Logger>,
+    logger: Arc<Mutex<Logger>>,
 }
 
 impl Webservice {
-    pub fn new(id: usize, success_chance: u32, logger: Arc<Logger>) -> Webservice {
+    pub fn new(id: usize, success_chance: u32, logger: Arc<Mutex<Logger>>) -> Webservice {
         Webservice {
             id,
             success_rate: success_chance.min(100),
@@ -27,8 +29,9 @@ impl Webservice {
     }
 
     fn decide(&self) -> Decision {
-        let i: i32 = rand::random();
-        if self.success_rate > 0 && (i % 100000) <= (self.success_rate * 1000) as i32 {
+        let num = rand::thread_rng().gen_range(0..100);
+
+        if num <= self.success_rate {
             return Decision::Accepted;
         }
         Decision::Rejected
@@ -41,7 +44,7 @@ impl Webservice {
     ) -> ReservationResult {
         let decision = self.decide();
 
-        self.logger.log_extra_arg(
+        self.logger.lock().expect("poisoned lock").log_extra_arg(
             format!("{}", self),
             "received reservation".to_string(),
             format!("{}", (*req).clone()),

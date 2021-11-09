@@ -12,14 +12,14 @@ use std::sync::{mpsc, Arc, Mutex};
 
 pub struct Program {
     results_service: Arc<ResultService>,
-    web_services: HashMap<String, ScheduleService>,
+    web_services: HashMap<String, Arc<ScheduleService>>,
     hotel: Arc<Webservice>,
-    logger: Arc<Logger>,
+    logger: Arc<Mutex<Logger>>,
 }
 
 impl Program {
     pub fn new(log_file_name: String) -> Program {
-        let logger = Arc::new(Logger::new(log_file_name));
+        let logger = Arc::new(Mutex::new(Logger::new(log_file_name)));
         Program {
             results_service: Arc::new(ResultService::new(100, logger.clone())),
             web_services: HashMap::new(),
@@ -55,7 +55,7 @@ impl Program {
         for line in reader.lines().flatten() {
             let reservation = Arc::new(Reservation::from_line(line, reqs));
 
-            self.logger.log(
+            self.logger.lock().expect("poisoned lock").log(
                 format!("{}", self),
                 "parsed reservation".to_string(),
                 format!("{}", reservation),
@@ -70,7 +70,7 @@ impl Program {
             };
 
             reqs += 1;
-            scheduler.schedule_to_process(reservation, sender.clone());
+            scheduler.schedule_to_process(scheduler.clone(), reservation, sender.clone());
         }
         println!("finished scheduling reservations!");
         while reqs > 0 {
@@ -111,7 +111,7 @@ impl Program {
                 params[0]
                     .parse()
                     .unwrap_or_else(|_| panic!("PROGRAM: INTERNAL ERROR WHILE PARSING FILE")),
-                ScheduleService::new(
+                Arc::new(ScheduleService::new(
                     id,
                     capacity,
                     retry_wait,
@@ -119,7 +119,7 @@ impl Program {
                     self.hotel.clone(),
                     self.results_service.clone(),
                     self.logger.clone(),
-                ),
+                )),
             );
             id += 1;
         }
