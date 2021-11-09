@@ -5,17 +5,20 @@ mod schedule_service;
 mod stats_service;
 mod webservice;
 
+mod cooldown_service;
 mod decision;
 mod finished;
 mod moving_stats;
 mod ranked_route_entry;
 mod reservation;
+mod reservation_cooldown;
 mod reservation_kind;
 mod reservation_result;
 mod run;
 mod stats;
 mod to_process_reservation;
 mod to_process_reservation_result;
+mod webservice_kind;
 
 use actix::{Actor, System};
 use program::Program;

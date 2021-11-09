@@ -6,6 +6,7 @@ use crate::run::Run;
 use crate::schedule_service::ScheduleService;
 use crate::stats::Stats;
 use crate::webservice::Webservice;
+use crate::webservice_kind::WebserviceKind;
 use actix::{Actor, Addr, AsyncContext, Context, Handler};
 use std::collections::HashMap;
 use std::fmt;
@@ -29,7 +30,7 @@ impl Program {
         Program {
             results_service: Arc::new(ResultService::new(logger.clone()).start()),
             schedule_services: HashMap::new(),
-            hotel: Arc::new(Webservice::new(100, 0, 100, 0, logger.clone()).start()),
+            hotel: Arc::new(Webservice::new(WebserviceKind::Hotel, 100, 0, logger.clone()).start()),
             logger,
             amount_to_process: 0,
             processed: 0,
@@ -61,7 +62,8 @@ impl Program {
                 .unwrap_or_else(|_| panic!("PROGRAM: INTERNAL ERROR WHILE PARSING FILE"));
 
             let schedule_service_addr = ScheduleService::new(
-                Webservice::new(capacity, wait_time, rate, id, self.logger.clone()).start(),
+                (capacity, wait_time),
+                Webservice::new(WebserviceKind::Airline, rate, id, self.logger.clone()).start(),
                 self.hotel.clone(),
                 self.results_service.clone(),
                 self.logger.clone(),
@@ -143,9 +145,7 @@ impl Handler<Run> for Program {
                 }
                 Some(s) => &*s,
             };
-            scheduler.try_send(reservation).unwrap_or_else(|_| {
-                panic!("PROGRAM: Couldn't send RESERVATION message to SCHEDULER")
-            });
+            scheduler.do_send(reservation);
             i += 1;
         }
     }
@@ -156,7 +156,6 @@ impl Handler<Finished> for Program {
 
     fn handle(&mut self, _msg: Finished, _ctx: &mut Self::Context) -> Self::Result {
         self.processed += 1;
-
         if self.processed == self.amount_to_process {
             self.finish();
         }

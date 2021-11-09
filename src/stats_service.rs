@@ -48,7 +48,8 @@ impl StatsService {
         }
         if sample_size == 0 {
             return MovingStats {
-                sample_size: 0,
+                successful: 0,
+                failed: 0,
                 success_rate: 0.0,
                 avg_latency: 0.0,
                 highest_latency: 0.0,
@@ -58,7 +59,8 @@ impl StatsService {
         }
 
         MovingStats {
-            sample_size,
+            successful: sample_size,
+            failed: (self.history.len() as u32 - sample_size) as u32,
             success_rate: success_rate / self.history.len() as f32,
             avg_latency: avg_latency / self.history.len() as f32,
             highest_latency,

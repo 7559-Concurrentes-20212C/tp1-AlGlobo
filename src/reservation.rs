@@ -12,8 +12,7 @@ pub struct Reservation {
     pub airline: String,
     pub kind: ReservationKind,
     pub alive_timer: Instant,
-    pub max_attempts: u32,
-    pub current_attempt_num: u32,
+    pub fresh: bool,
 }
 
 impl Clone for Reservation {
@@ -25,8 +24,7 @@ impl Clone for Reservation {
             airline: self.airline.clone(),
             kind: self.kind.clone(),
             alive_timer: self.alive_timer,
-            max_attempts: self.max_attempts,
-            current_attempt_num: self.current_attempt_num,
+            fresh: self.fresh,
         }
     }
 }
@@ -45,8 +43,7 @@ impl Reservation {
                 _ => ReservationKind::Package,
             },
             alive_timer: Instant::now(),
-            max_attempts: 10,
-            current_attempt_num: 1,
+            fresh: true,
         }
     }
 }
@@ -55,8 +52,8 @@ impl fmt::Display for Reservation {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
-            "<{}>({}|{}-{}|{})",
-            self.id, self.airline, self.origin, self.destination, self.kind
+            "<{}>({}|{}-{}|{}|{})",
+            self.id, self.airline, self.origin, self.destination, self.kind, self.fresh,
         )
     }
 }
