@@ -19,7 +19,7 @@ pub struct ScheduleService {
     webservice: Arc<Webservice>,
     hotel_webservice: Arc<Webservice>,
     result_service: Arc<ResultService>,
-    logger: Arc<Logger>,
+    logger: Arc<Mutex<Logger>>,
     cooldown_service: Arc<CooldownService>,
 }
 
@@ -31,7 +31,7 @@ impl ScheduleService {
         webservice: Arc<Webservice>,
         hotel_webservice: Arc<Webservice>,
         result_service: Arc<ResultService>,
-        logger: Arc<Logger>,
+        logger: Arc<Mutex<Logger>>,
     ) -> ScheduleService {
         ScheduleService {
             id,
@@ -69,7 +69,7 @@ impl ScheduleService {
         let cooldown_service = self.cooldown_service.clone();
         let scheduler = arc_self;
 
-        self.logger.log(
+        self.logger.lock().expect("poisoned lock").log(
             format!("{}", self),
             "received reservation".to_string(),
             format!("{}", reservation),
@@ -78,7 +78,7 @@ impl ScheduleService {
             .lock()
             .expect("lock is poisoned")
             .execute(move || {
-                logger.log(
+                logger.lock().expect("poisoned lock").log(
                     format!("SCHDULER <{}>", id),
                     "processing reservation result".to_string(),
                     format!("{}", reservation),
@@ -88,7 +88,7 @@ impl ScheduleService {
                     ReservationKind::Flight => {
                         let result = webservice.process(reservation.clone(), now.clone());
 
-                        logger.log(
+                        logger.lock().expect("poisoned lock").log(
                             format!("SCHDULER <{}>", id),
                             "received result".to_string(),
                             format!(
@@ -137,7 +137,7 @@ impl ScheduleService {
 
                         let result = ReservationResult::mix(r1, r2.clone());
 
-                        logger.log(
+                        logger.lock().expect("poisoned lock").log(
                             format!("SCHDULER <{}>", id),
                             "received result".to_string(),
                             format!("{}", result,),
@@ -152,7 +152,7 @@ impl ScheduleService {
                                 .send(true)
                                 .expect("could not send!");
                         } else {
-                            logger.log(
+                            logger.lock().expect("poisoned lock").log(
                                 format!("SCHDULER <{}>", id),
                                 "reservation processing failed for".to_string(),
                                 format!("{}", reservation),
