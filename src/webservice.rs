@@ -75,7 +75,7 @@ impl Handler<ToProcessReservation> for Webservice {
                         elapsed,
                         _me.kind,
                     );
-                    msg.sender.try_send(result).expect(&error_msg);
+                    msg.sender.do_send(result).expect(&error_msg);
                 }),
         )
     }

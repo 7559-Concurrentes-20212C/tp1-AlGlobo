@@ -111,7 +111,7 @@ impl Handler<ToProcessReservationResult> for ResultService {
 
         if success {
             msg.sender
-                .try_send(Finished {})
+                .do_send(Finished {})
                 .unwrap_or_else(|_| panic!("Could send FINISH message from RESULT SERVICE"));
         }
     }

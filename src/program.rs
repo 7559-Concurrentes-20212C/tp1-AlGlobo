@@ -145,9 +145,7 @@ impl Handler<Run> for Program {
                 }
                 Some(s) => &*s,
             };
-            scheduler.try_send(reservation).unwrap_or_else(|_| {
-                panic!("PROGRAM: Couldn't send RESERVATION message to SCHEDULER")
-            });
+            scheduler.do_send(reservation);
             i += 1;
         }
     }
