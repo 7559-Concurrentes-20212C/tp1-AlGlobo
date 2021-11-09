@@ -168,9 +168,7 @@ impl Handler<ReservationResult> for ScheduleService {
 impl Handler<Finished> for ScheduleService {
     type Result = ();
     fn handle(&mut self, _msg: Finished, _ctx: &mut Self::Context) -> Self::Result {
-        if self.queued_reservations.is_empty() && self.amount_processing == 0 {
-            self.caller.do_send(Finished {});
-        }
+        self.caller.do_send(Finished {});
     }
 }
 
