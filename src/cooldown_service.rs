@@ -31,14 +31,17 @@ impl Handler<CooldownReservation> for CooldownService {
         Box::pin(
             sleep(Duration::from_millis(wait.min(retry_wait)))
                 .into_actor(self)
-                .map(move |_result, _me, _ctx| {
-                    match msg.caller.do_send(msg.reservation) {
-                        Ok(_) => {},
+                .map(
+                    move |_result, _me, _ctx| match msg.caller.do_send(msg.reservation) {
+                        Ok(_) => {}
                         Err(error) => {
-                            panic!("Error - CooldownService while trying to return request!: {:?}", error);
+                            panic!(
+                                "Error - CooldownService while trying to return request!: {:?}",
+                                error
+                            );
                         }
-                    }
-                }),
+                    },
+                ),
         )
     }
 }

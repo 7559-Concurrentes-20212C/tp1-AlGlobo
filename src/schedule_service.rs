@@ -67,33 +67,31 @@ impl Actor for ScheduleService {
 impl Handler<Reservation> for ScheduleService {
     type Result = ();
 
-    fn handle(&mut self, msg: Reservation, _ctx: &mut Self::Context) -> Self::Result {
+    fn handle(&mut self, mut msg: Reservation, _ctx: &mut Self::Context) -> Self::Result {
         self.logger.log(
             format!("{}", self),
             "received reservation".to_string(),
             format!("{}", msg),
         );
 
-        if self.amount_processing < self.capacity {
-            self.webservice
-                .do_send(ToProcessReservation {
+        if let ReservationKind::Package = msg.kind {
+            if msg.fresh {
+                self.hotel_webservice.do_send(ToProcessReservation {
                     reservation: msg.clone(),
                     sender: _ctx.address().recipient(),
                 });
-            self.amount_processing += 1;
-        } else {
-            self.queued_reservations.push_front(msg.clone());
-            
+            }
         }
 
-        if let ReservationKind::Package = msg.kind {
-            if msg.fresh {
-                self.hotel_webservice
-                    .do_send(ToProcessReservation {
-                        reservation: msg,
-                        sender: _ctx.address().recipient(),
-                    });
-            }
+        if self.amount_processing < self.capacity {
+            self.webservice.do_send(ToProcessReservation {
+                reservation: msg,
+                sender: _ctx.address().recipient(),
+            });
+            self.amount_processing += 1;
+        } else {
+            msg.fresh = false;
+            self.queued_reservations.push_front(msg);
         }
     }
 }
@@ -108,53 +106,50 @@ impl Handler<ReservationResult> for ScheduleService {
             format!("{}", msg),
         );
 
+        let mut ready_to_process_result = true;
+
         if let WebserviceKind::Airline = msg.creator {
             self.amount_processing -= 1;
         }
 
         if !msg.accepted {
-            let mut reservation = msg.reservation;
-            self.cooldown_service
-                .do_send(CooldownReservation {
-                    caller: _ctx.address().recipient(),
-                    reservation,
-                    requested: Instant::now(),
-                });
-        } else {
-            let mut ready_to_process_result = true;
-            if let ReservationKind::Package = msg.reservation.kind {
-                if self.results.contains_key(&msg.reservation.id) {
-                    let id = msg.reservation.id;
-                    let r1 = msg;
-                    let r2 = self
-                        .results
-                        .get(&id)
-                        .unwrap_or_else(|| panic!("SCHEDULER <{}>: INTERNAL ERROR", self.id));
+            msg.reservation.fresh = false;
+            let reservation = msg.reservation.clone();
+            self.cooldown_service.do_send(CooldownReservation {
+                caller: _ctx.address().recipient(),
+                reservation,
+                requested: Instant::now(),
+            });
+        } else if let ReservationKind::Package = msg.reservation.kind {
+            if self.results.contains_key(&msg.reservation.id) {
+                let id = msg.reservation.id;
+                let r1 = msg;
+                let r2 = self
+                    .results
+                    .get(&id)
+                    .unwrap_or_else(|| panic!("SCHEDULER <{}>: INTERNAL ERROR", self.id));
 
-                    let reservation_accepted_val = r1.accepted && r2.accepted;
+                let reservation_accepted_val = r1.accepted && r2.accepted;
 
-                    msg = ReservationResult::from_reservation_ref(
-                        r1.reservation,
-                        reservation_accepted_val,
-                        max_duration_between(r1.time_to_process, r2.time_to_process),
-                        WebserviceKind::Merge,
-                    );
-                } else {
-                    ready_to_process_result = false;
-                    self.results
-                        .entry(msg.reservation.id)
-                        .or_insert_with(|| msg.clone());
-                }
-            }
-            if ready_to_process_result {
-                self.result_service
-                    .do_send(ToProcessReservationResult {
-                        result: msg,
-                        sender: _ctx.address().recipient(),
-                    });
+                msg = ReservationResult::from_reservation_ref(
+                    r1.reservation,
+                    reservation_accepted_val,
+                    max_duration_between(r1.time_to_process, r2.time_to_process),
+                    WebserviceKind::Merge,
+                );
+            } else {
+                ready_to_process_result = false;
+                self.results
+                    .entry(msg.reservation.id)
+                    .or_insert_with(|| msg.clone());
             }
         }
-
+        if ready_to_process_result {
+            self.result_service.do_send(ToProcessReservationResult {
+                result: msg,
+                sender: _ctx.address().recipient(),
+            });
+        }
         if !self.queued_reservations.is_empty() {
             let queued_msg = self
                 .queued_reservations

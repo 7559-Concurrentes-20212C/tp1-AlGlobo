@@ -30,18 +30,23 @@ impl ResultService {
             .log("".to_string(), "--- STATS ---".to_string(), "".to_string());
         self.logger.log(
             "".to_string(),
-            "sample size".to_string(),
-            format!("{}", stats.sample_size),
+            "succesful".to_string(),
+            format!("{}", stats.successful),
         );
         self.logger.log(
             "".to_string(),
-            "avg latency".to_string(),
-            format!("{}", stats.avg_latency),
+            "failed".to_string(),
+            format!("{}", stats.failed),
         );
         self.logger.log(
             "".to_string(),
             "success rate".to_string(),
             format!("{}", stats.success_rate),
+        );
+        self.logger.log(
+            "".to_string(),
+            "avg latency".to_string(),
+            format!("{}", stats.avg_latency),
         );
         self.logger.log(
             "".to_string(),
