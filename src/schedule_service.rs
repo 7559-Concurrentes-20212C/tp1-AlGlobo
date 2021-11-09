@@ -119,8 +119,6 @@ impl Handler<ReservationResult> for ScheduleService {
             format!("{}", msg),
         );
 
-        let mut ready_to_process_result = true;
-
         if let WebserviceKind::Airline = msg.creator {
             self.amount_processing -= 1;
         }
@@ -141,6 +139,7 @@ impl Handler<ReservationResult> for ScheduleService {
                     )
                 });
         } else {
+            let mut ready_to_process_result = true;
             if let ReservationKind::Package = msg.reservation.kind {
                 if self.results.contains_key(&msg.reservation.id) {
                     let id = msg.reservation.id;
@@ -198,13 +197,15 @@ impl Handler<ReservationResult> for ScheduleService {
 impl Handler<Finished> for ScheduleService {
     type Result = ();
     fn handle(&mut self, _msg: Finished, _ctx: &mut Self::Context) -> Self::Result {
-        self.caller.try_send(Finished {}).unwrap_or_else(|_| {
-            panic!(
-                "SCHEDULER <{}>: Couldn't
+        if self.queued_reservations.is_empty() && self.amount_processing == 0 {
+            self.caller.try_send(Finished {}).unwrap_or_else(|_| {
+                panic!(
+                    "SCHEDULER <{}>: Couldn't
         send FINISH message to PROGRAM",
-                self.id
-            )
-        });
+                    self.id
+                )
+            });
+        }
     }
 }
 
