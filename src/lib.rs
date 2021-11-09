@@ -13,10 +13,10 @@ pub mod message;
 pub mod moving_stats;
 pub mod worker;
 
+mod cooldown_service;
 pub mod ranked_route_entry;
 pub mod reservation_kind;
 pub mod reservation_result;
-mod cooldown_service;
 
 use program::Program;
 

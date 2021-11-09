@@ -70,7 +70,7 @@ impl Program {
             };
 
             reqs += 1;
-            scheduler.schedule_to_process( scheduler.clone(), reservation, sender.clone());
+            scheduler.schedule_to_process(scheduler.clone(), reservation, sender.clone());
         }
         println!("finished scheduling reservations!");
         while reqs > 0 {

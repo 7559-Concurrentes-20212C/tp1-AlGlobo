@@ -4,6 +4,7 @@ extern crate rand;
 use crate::decision::Decision;
 use crate::logger::Logger;
 use crate::reservation_result::ReservationResult;
+use crate::webservice::rand::Rng;
 use reservation::Reservation;
 use std::fmt;
 use std::sync::Arc;
@@ -27,8 +28,9 @@ impl Webservice {
     }
 
     fn decide(&self) -> Decision {
-        let i: i32 = rand::random();
-        if self.success_rate > 0 && (i % 100000) <= (self.success_rate * 1000) as i32 {
+        let num = rand::thread_rng().gen_range(0..100);
+
+        if num <= self.success_rate {
             return Decision::Accepted;
         }
         Decision::Rejected

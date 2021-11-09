@@ -49,12 +49,12 @@ impl ResultService {
             .log("".to_string(), "--- STATS ---".to_string(), "".to_string());
         self.logger.log(
             "".to_string(),
-            "sample size".to_string(),
+            "succesful".to_string(),
             format!("{}", stats.successful),
         );
         self.logger.log(
             "".to_string(),
-            "sample size".to_string(),
+            "failed".to_string(),
             format!("{}", stats.failed),
         );
         self.logger.log(

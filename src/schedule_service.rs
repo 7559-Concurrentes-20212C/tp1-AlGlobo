@@ -1,3 +1,4 @@
+use crate::cooldown_service::CooldownService;
 use crate::logger::Logger;
 use crate::reservation::Reservation;
 use crate::reservation_kind::ReservationKind;
@@ -8,10 +9,9 @@ use crate::webservice::Webservice;
 use std::fmt;
 use std::sync::mpsc::Sender;
 use std::sync::{Arc, Mutex};
+use std::thread;
 use std::time::Duration;
 use std::time::Instant;
-use std::{thread};
-use crate::cooldown_service::CooldownService;
 
 pub struct ScheduleService {
     id: usize,
@@ -40,7 +40,7 @@ impl ScheduleService {
             webservice,
             hotel_webservice,
             result_service,
-            logger
+            logger,
         }
     }
 
@@ -49,6 +49,16 @@ impl ScheduleService {
         arc_self: Arc<ScheduleService>,
         reservation: Arc<Reservation>,
         finished_response: Arc<Mutex<Sender<bool>>>,
+    ) {
+        self._schedule_to_process(arc_self, reservation, finished_response, None)
+    }
+
+    pub fn _schedule_to_process(
+        &self,
+        arc_self: Arc<ScheduleService>,
+        reservation: Arc<Reservation>,
+        finished_response: Arc<Mutex<Sender<bool>>>,
+        hotel_result: Option<ReservationResult>,
     ) {
         let webservice = self.webservice.clone();
         let hotel_webservice = self.hotel_webservice.clone();
@@ -77,7 +87,6 @@ impl ScheduleService {
                 match reservation.kind {
                     ReservationKind::Flight => {
                         let result = webservice.process(reservation.clone(), now.clone());
-                        let s = result.accepted;
 
                         logger.log(
                             format!("SCHDULER <{}>", id),
@@ -86,41 +95,47 @@ impl ScheduleService {
                                 "{}",
                                 ReservationResult::from_reservation_ref(
                                     (*reservation).clone(),
-                                    s,
-                                    Duration::from_secs_f32(
-                                        result.time_to_process.as_secs_f32()
-                                    )
+                                    result.accepted,
+                                    Duration::from_secs_f32(result.time_to_process.as_secs_f32())
                                 ),
                             ),
                         );
 
-                        result_service.process_result(result);
+                        result_service.process_result(result.clone());
 
-                        if !s {
-                            cooldown_service.cooldown(scheduler, reservation, finished_response.clone());
+                        if result.accepted {
+                            finished_response
+                                .lock()
+                                .expect("poisoned!")
+                                .send(true)
+                                .expect("could not send!");
+                        } else {
+                            cooldown_service.cooldown(
+                                scheduler,
+                                reservation,
+                                finished_response.clone(),
+                                None,
+                            );
                         }
                     }
                     ReservationKind::Package => {
+                        let airline_res = reservation.clone();
                         let hotel_res = reservation.clone();
                         let hotel_now = now.clone();
                         let ws = webservice.clone();
 
-                        let r1 = thread::spawn(move || ws.process(hotel_res, hotel_now));
+                        let r1 = ws.process(airline_res, now.clone());
 
-                        let r2 = hotel_webservice.process(reservation.clone(), now.clone());
-                        let r1 = r1.join().expect("SCHEDULER: failed to join thread");
+                        let r2: ReservationResult = match hotel_result {
+                            Some(r2) => r2,
+                            None => thread::spawn(move || {
+                                hotel_webservice.process(hotel_res, hotel_now)
+                            })
+                            .join()
+                            .expect("SCHEDULER: failed to join thread"),
+                        };
 
-                        let duration = Duration::from_secs_f32(
-                            r1.time_to_process
-                                .as_secs_f32()
-                                .max(r2.time_to_process.as_secs_f32()),
-                        );
-
-                        let result = ReservationResult::from_reservation_ref(
-                            (*reservation).clone(),
-                            r1.accepted && r2.accepted,
-                            duration,
-                        );
+                        let result = ReservationResult::mix(r1, r2.clone());
 
                         logger.log(
                             format!("SCHDULER <{}>", id),
@@ -128,23 +143,29 @@ impl ScheduleService {
                             format!("{}", result,),
                         );
 
-                        let s = result.accepted;
-                        result_service.process_result(result);
-                        if !s {
+                        result_service.process_result(result.clone());
+
+                        if result.accepted {
+                            finished_response
+                                .lock()
+                                .expect("poisoned!")
+                                .send(true)
+                                .expect("could not send!");
+                        } else {
                             logger.log(
                                 format!("SCHDULER <{}>", id),
                                 "reservation processing failed for".to_string(),
                                 format!("{}", reservation),
                             );
-                            cooldown_service.cooldown(scheduler, reservation, finished_response.clone());
+                            cooldown_service.cooldown(
+                                scheduler,
+                                reservation,
+                                finished_response.clone(),
+                                Some(r2),
+                            );
                         }
                     }
                 }
-                finished_response
-                    .lock()
-                    .expect("poisoned!")
-                    .send(true)
-                    .expect("could not send!");
             })
     }
 }
