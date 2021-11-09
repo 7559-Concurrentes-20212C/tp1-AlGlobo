@@ -145,9 +145,7 @@ impl Handler<Run> for Program {
                 }
                 Some(s) => &*s,
             };
-            scheduler.try_send(reservation).unwrap_or_else(|_| {
-                panic!("PROGRAM: Couldn't send RESERVATION message to SCHEDULER")
-            });
+            scheduler.do_send(reservation);
             i += 1;
         }
     }
@@ -158,8 +156,7 @@ impl Handler<Finished> for Program {
 
     fn handle(&mut self, _msg: Finished, _ctx: &mut Self::Context) -> Self::Result {
         self.processed += 1;
-
-        if self.processed == self.amount_to_process {
+        if self.processed == self.schedule_services.len() {
             self.finish();
         }
     }

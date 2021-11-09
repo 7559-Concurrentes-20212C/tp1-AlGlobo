@@ -76,33 +76,22 @@ impl Handler<Reservation> for ScheduleService {
 
         if self.amount_processing < self.capacity {
             self.webservice
-                .try_send(ToProcessReservation {
+                .do_send(ToProcessReservation {
                     reservation: msg.clone(),
                     sender: _ctx.address().recipient(),
-                })
-                .unwrap_or_else(|_| {
-                    panic!(
-                        "SCHEDULER <{}>: Couldn't send RESULT message to WEBSERVICE",
-                        self.id
-                    )
                 });
             self.amount_processing += 1;
         } else {
             self.queued_reservations.push_front(msg.clone());
+            
         }
 
         if let ReservationKind::Package = msg.kind {
             if msg.fresh {
                 self.hotel_webservice
-                    .try_send(ToProcessReservation {
+                    .do_send(ToProcessReservation {
                         reservation: msg,
                         sender: _ctx.address().recipient(),
-                    })
-                    .unwrap_or_else(|_| {
-                        panic!(
-                            "SCHEDULER <{}>: Couldn't send RESULT message to HOTEL",
-                            self.id
-                        )
                     });
             }
         }
@@ -119,28 +108,20 @@ impl Handler<ReservationResult> for ScheduleService {
             format!("{}", msg),
         );
 
-        let mut ready_to_process_result = true;
-
         if let WebserviceKind::Airline = msg.creator {
             self.amount_processing -= 1;
         }
 
         if !msg.accepted {
             let mut reservation = msg.reservation;
-            reservation.fresh = false;
             self.cooldown_service
-                .try_send(CooldownReservation {
+                .do_send(CooldownReservation {
                     caller: _ctx.address().recipient(),
                     reservation,
                     requested: Instant::now(),
-                })
-                .unwrap_or_else(|_| {
-                    panic!(
-                        "SCHEDULER <{}>: Couldn't send RESERVATION to itself for retry",
-                        self.id
-                    )
                 });
         } else {
+            let mut ready_to_process_result = true;
             if let ReservationKind::Package = msg.reservation.kind {
                 if self.results.contains_key(&msg.reservation.id) {
                     let id = msg.reservation.id;
@@ -167,15 +148,9 @@ impl Handler<ReservationResult> for ScheduleService {
             }
             if ready_to_process_result {
                 self.result_service
-                    .try_send(ToProcessReservationResult {
+                    .do_send(ToProcessReservationResult {
                         result: msg,
                         sender: _ctx.address().recipient(),
-                    })
-                    .unwrap_or_else(|_| {
-                        panic!(
-                            "SCHEDULER <{}>: Couldn't send RESULT message to RESULT SERVICE",
-                            self.id
-                        )
                     });
             }
         }
@@ -185,12 +160,7 @@ impl Handler<ReservationResult> for ScheduleService {
                 .queued_reservations
                 .pop_back()
                 .expect("INTERNAL ERROR: Coudnt' pop queued reservation");
-            _ctx.address().try_send(queued_msg).unwrap_or_else(|_| {
-                panic!(
-                    "SCHEDULER <{}>: Couldn't send RESERVATION to itself",
-                    self.id
-                )
-            });
+            _ctx.address().do_send(queued_msg);
         }
     }
 }
@@ -198,13 +168,9 @@ impl Handler<ReservationResult> for ScheduleService {
 impl Handler<Finished> for ScheduleService {
     type Result = ();
     fn handle(&mut self, _msg: Finished, _ctx: &mut Self::Context) -> Self::Result {
-        self.caller.try_send(Finished {}).unwrap_or_else(|_| {
-            panic!(
-                "SCHEDULER <{}>: Couldn't
-        send FINISH message to PROGRAM",
-                self.id
-            )
-        });
+        if self.queued_reservations.is_empty() && self.amount_processing == 0 {
+            self.caller.do_send(Finished {});
+        }
     }
 }
 

@@ -32,9 +32,12 @@ impl Handler<CooldownReservation> for CooldownService {
             sleep(Duration::from_millis(wait.min(retry_wait)))
                 .into_actor(self)
                 .map(move |_result, _me, _ctx| {
-                    msg.caller.try_send(msg.reservation).unwrap_or_else(|_| {
-                        panic!("COOLDOWN SERVICE: Couldn't send RESERVATION message to SCHEDULER")
-                    });
+                    match msg.caller.do_send(msg.reservation) {
+                        Ok(_) => {},
+                        Err(error) => {
+                            panic!("Error - CooldownService while trying to return request!: {:?}", error);
+                        }
+                    }
                 }),
         )
     }
